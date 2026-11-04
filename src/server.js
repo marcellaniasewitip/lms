@@ -16,6 +16,7 @@ const settings = require('./services/settings');
 const notify = require('./services/notify');
 const loans = require('./services/loans');
 const items = require('./services/items');
+const phone = require('./lib/phone');
 
 db.open();
 settings.seedReferenceData();
@@ -100,6 +101,9 @@ app.use((req, res, next) => {
     flash, old, path: req.path, query: req.query, today: dates.today(), dates, money,
     fd: dates.fmt, fts: dates.fmtTs, K: money.fmt, STATUS: loans.STATUS, CHANNELS: loans.CHANNELS, ROLE_LABEL, CUSTODY: items.CUSTODY_LABEL,
     lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES,
+    // Phone numbers shown and pre-filled as (+675) 7123-4567; forms check the same format.
+    fmtPhone: (s) => (phone.normalize(s) ? phone.format(s) : s || ''),
+    phonePattern: phone.HTML_PATTERN, phoneFormat: phone.FORMAT_TEXT,
     val: (name, def = '') => (old && old[name] !== undefined ? old[name] : def ?? ''),
     oldHas: (name, v, def = false) => {
       if (!old) return def;

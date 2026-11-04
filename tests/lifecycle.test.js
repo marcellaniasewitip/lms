@@ -25,7 +25,7 @@ const fx = require('../scripts/fixtures');
 db.open();
 settings.seedReferenceData();
 const svc = { db, customers, items };
-const uid = (name, role) => users.get(users.create(null, { username: name, full_name: name.toUpperCase(), role, branch_id: 1, mobile: '+67571000001', password: 'Str0ng!Passw0rd' }));
+const uid = (name, role) => users.get(users.create(null, { username: name, full_name: name.toUpperCase(), role, branch_id: 1, mobile: '(+675) 71000001', password: 'Str0ng!Passw0rd' }));
 const admin = uid('admin1', 'admin');
 const lo = uid('officer1', 'loan_officer');
 const cro = uid('cro1', 'cro');
@@ -54,25 +54,33 @@ test('expired ID is rejected and under-18 blocked', () => {
   const t = '2026-11-02';
   const { id } = customers.create(C(lo, t), {
     surname: 'Young', given_names: 'Ana', dob: '01/01/2000', sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean', home_province: 'Central',
-    home_district: 'Abau', home_village: 'Kupiano', mobile: '81998888', addr_province: 'Central', addr_district: 'Abau', addr_town: 'Kupiano',
-    addr_section_lot: 'Village', addr_landmark: 'Church', residence_proof_type: 'Letter from the ward councillor', nok_name: 'X', nok_relationship: 'Mother', nok_phone: '71111111',
+    home_district: 'Abau', home_village: 'Kupiano', mobile: '(+675) 8199-8888', addr_province: 'Central', addr_district: 'Abau', addr_town: 'Kupiano',
+    addr_section_lot: 'Village', addr_landmark: 'Church', residence_proof_type: 'Letter from the ward councillor', nok_name: 'X', nok_relationship: 'Mother', nok_phone: '(+675) 71111111',
     nok_address: 'Kupiano', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
   }, { photoDataUrl: fx.DATA_URL, signatureDataUrl: fx.DATA_URL });
   const nid = customers.idTypes()[0];
   const rid = customers.addId(C(lo, t), id, { id_type_id: nid.id, number: 'OLD999', expiry_date: '01/01/2025', name_on_id: 'Ana Young', dob_on_id: '01/01/2000' }, { front: [fx.file()] });
   assert.throws(() => customers.reviewId(C(cro, t), rid, { decision: 'accept', photo_match: true }), rx(/expired on 01\/01\/2025/));
   assert.throws(() => customers.create(C(lo, t), { surname: 'Kid', given_names: 'A', dob: '01/01/2012' }), /fix the customer profile/);
-  // The mobile was entered as 81998888: stored as local digits with its network.
-  assert.deepEqual([customers.get(id).mobile, customers.get(id).mobile_network], ['81998888', 'Vodafone']);
-  // Every common format is accepted for the customer's mobile and second number.
-  for (const [mobile, net] of [['+675 7123 4567', 'Digicel'], ['(+675) 7812-3456', 'Telikom'], ['+67582123456', 'Vodafone']]) {
-    customers.update(C(lo, t), id, { mobile, second_phone: '(+675) 7123-4567' });
+  // Entered as (+675) 8199-8888: stored as the local digits, network from the prefix, other numbers kept in the same format.
+  assert.deepEqual([customers.get(id).mobile, customers.get(id).mobile_network, customers.get(id).nok_phone], ['81998888', 'Vodafone', '(+675) 7111-1111']);
+  // Contact numbers are accepted only as (+675) 71234567 or (+675) 7123-4567.
+  for (const [mobile, net] of [['(+675) 71234567', 'Digicel'], ['(+675) 7812-3456', 'Telikom'], ['(+675) 8212-3456', 'Vodafone']]) {
+    customers.update(C(lo, t), id, { mobile, second_phone: '(+675) 7123-4567', nok_phone: '(+675) 75551234' });
     assert.equal(customers.get(id).mobile_network, net, mobile);
   }
-  assert.throws(() => customers.update(C(lo, t), id, { mobile: '+675 7712 3456' }), rx(/not a PNG mobile/));
-  // Staff sign-in numbers accept the same formats.
+  for (const bad of ['71234567', '+675 7123 4567', '+67571234567', '(+675)71234567', '(+675) 7123 4567', '675 7123-4567']) {
+    assert.throws(() => customers.update(C(lo, t), id, { mobile: bad }), rx(/must be written as \(\+675\) 71234567 or \(\+675\) 7123-4567/), bad);
+  }
+  assert.throws(() => customers.update(C(lo, t), id, { mobile: '(+675) 7712-3456' }), rx(/not a PNG mobile/));
+  assert.throws(() => customers.update(C(lo, t), id, { second_phone: '7123 4567' }), rx(/Second number must be written/));
+  assert.throws(() => customers.update(C(lo, t), id, { nok_phone: '+675 7123 4567' }), rx(/Next of kin phone must be written/));
+  // A saved profile can be edited without retyping the numbers (they are stored and re-shown in the accepted format).
+  customers.update(C(lo, t), id, { occupation: 'Farmer' });
+  // Staff sign-in numbers follow the same format.
   const sid = users.create(null, { username: 'fmt.test', full_name: 'Format Test', role: 'cro', branch_id: 1, mobile: '(+675) 8312-3456', password: 'Str0ng!Passw0rd' });
   assert.equal(users.get(sid).mobile, '+67583123456');
+  assert.throws(() => users.create(null, { username: 'fmt.bad', full_name: 'Bad', role: 'cro', branch_id: 1, mobile: '+67583123456', password: 'Str0ng!Passw0rd' }), rx(/must be written as/));
 });
 
 test('stolen item list blocks intake; IMEI must be valid', () => {

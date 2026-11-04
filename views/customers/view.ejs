@@ -40,7 +40,7 @@
       <dt>Residence proof</dt><dd><%= c.residence_proof_type %> <% residence.forEach(function (f) { %><a href="/files/<%= f.id %>">scan</a> <% }) %></dd>
       <dt>Work</dt><dd><%= c.occupation || '—' %><%= c.employer ? ', ' + c.employer : '' %><%= c.usual_income ? ' · ' + K(c.usual_income) : '' %></dd>
       <dt>Bank</dt><dd><%= c.bank_name || '—' %> <%= bank.account %> <%= bank.mobile ? '· mobile ' + bank.mobile : '' %></dd>
-      <dt>Next of kin</dt><dd><%= c.nok_name %> (<%= c.nok_relationship %>), <%= c.nok_phone %>, <%= c.nok_address %></dd>
+      <dt>Next of kin</dt><dd><%= c.nok_name %> (<%= c.nok_relationship %>), <%= fmtPhone(c.nok_phone) %>, <%= c.nok_address %></dd>
       <dt>Consents</dt><dd>Terms <%= fts(c.consent_terms_at) %> · Data <%= fts(c.consent_data_at) %> · Forfeiture <%= fts(c.consent_forfeit_at) %></dd>
       <dt>SMS language</dt><dd><%= c.sms_language === 'tpi' ? 'Tok Pisin' : 'English' %></dd>
     </dl>

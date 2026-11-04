@@ -56,12 +56,31 @@ function validate(c, onDate) {
   const errs = [];
   for (const [k, label] of Object.entries(REQUIRED)) if (!c[k]) errs.push(`${label} is required.`);
   if (c.dob && dates.ageOn(c.dob, onDate) < 18) errs.push('The pledger must be 18 or over.');
-  if (c.mobile) { const pr = phone.problem(c.mobile); if (pr) errs.push(pr); }
-  // Second number: any PNG mobile in any format, or another phone (landline) of 7–15 digits.
-  if (c.second_phone && !phone.normalize(c.second_phone) && !(/^[+\d\s().-]+$/.test(c.second_phone) && /^\d{7,15}$/.test(c.second_phone.replace(/\D/g, '')))) errs.push('Second number is not a valid phone number.');
+  // Stored mobiles are plain digits; the entry format is checked in enteredPhoneProblems().
+  if (c.mobile && !phone.normalize(c.mobile)) errs.push('Mobile number is not a PNG mobile number.');
   if (c.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email)) errs.push('Email is not valid.');
   if (c.residence_proof_type && !RESIDENCE_PROOF.includes(c.residence_proof_type)) errs.push('Choose a residence proof type.');
   return errs;
+}
+
+// Contact numbers typed into the form must be written as (+675) 71234567 or (+675) 7123-4567.
+const PHONE_FIELDS = { mobile: 'Mobile number', second_phone: 'Second number', nok_phone: 'Next of kin phone' };
+function enteredPhoneProblems(input) {
+  const errs = [];
+  for (const [k, label] of Object.entries(PHONE_FIELDS)) {
+    if (input[k] === undefined || input[k] === null) continue;
+    if (input[k] === '' && k === 'second_phone') continue; // optional
+    if (input[k] === '') continue; // "is required" comes from validate()
+    const pr = phone.problem(input[k], label);
+    if (pr) errs.push(pr);
+  }
+  return errs;
+}
+// Store numbers in one consistent shape once they have passed the entry check.
+function tidyPhones(c) {
+  if (c.mobile) c.mobile = phone.parseInput(c.mobile) || normMobile(c.mobile);
+  if (c.second_phone) c.second_phone = phone.format(c.second_phone);
+  if (c.nok_phone) c.nok_phone = phone.format(c.nok_phone);
 }
 
 function findDuplicates({ mobileNorm, nameNorm, dob, excludeId = 0 }) {
@@ -105,12 +124,12 @@ function create(ctx, data, media = {}) {
   requireRole(ctx, 'loan_officer');
   const on = today(ctx);
   const c = cleanInput(data);
-  const errs = validate(c, on);
+  const errs = [...enteredPhoneProblems(c), ...validate(c, on)];
   if (errs.length) throw new RuleError('Please fix the customer profile.', errs);
   const consentTs = dates.nowIso();
   for (const k of ['consent_terms', 'consent_data', 'consent_forfeit']) if (!data[k]) errs.push('All three consents (loan terms, data use, forfeiture and sale) must be given and are dated.');
   if (errs.length) throw new RuleError('Consents are required.', [...new Set(errs)]);
-  c.mobile = normMobile(c.mobile);
+  tidyPhones(c);
   const nameNorm = names.norm(`${c.given_names} ${c.surname}`);
   const hits = findDuplicates({ mobileNorm: c.mobile, nameNorm, dob: c.dob });
   const d = db.get();
@@ -139,10 +158,11 @@ function update(ctx, id, data, media = {}) {
   requireRole(ctx, 'loan_officer', 'cro');
   const before = get(id);
   checkBranch(ctx, before.branch_id);
-  const c = { ...before, ...cleanInput(data) };
-  const errs = validate(c, today(ctx));
-  if (errs.length) throw new RuleError('Please fix the customer profile.', errs);
-  c.mobile = normMobile(c.mobile);
+  const input = cleanInput(data);
+  const c = { ...before, ...input };
+  const errs = [...enteredPhoneProblems(input), ...validate(c, today(ctx))];
+  if (errs.length) throw new RuleError('Please fix the customer profile.', [...new Set(errs)]);
+  tidyPhones(c);
   const mobileChanged = c.mobile !== before.mobile;
   const nameNorm = names.norm(`${c.given_names} ${c.surname}`);
   const d = db.get();

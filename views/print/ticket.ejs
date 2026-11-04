@@ -39,7 +39,7 @@
   <table class="t"><tr><th>Pledger</th><td><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</td></tr>
   <tr><th>Postal address</th><td><%= c.po_box || '—' %></td></tr>
   <tr><th>Residential address</th><td><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %> (near <%= c.addr_landmark %>)</td></tr>
-  <tr><th>Phone</th><td><%= '+675 ' + c.mobile.slice(0,4) + ' ' + c.mobile.slice(4) %> (<%= c.mobile_network %>)</td></tr>
+  <tr><th>Phone</th><td><%= fmtPhone(c.mobile) %> (<%= c.mobile_network %>)</td></tr>
   <tr><th>ID type and number</th><td><%= idText %></td></tr>
   <tr><th>Date of birth</th><td><%= fd(c.dob) %> (18 or over: <%= dates.ageOn(c.dob, fig.release) >= 18 ? 'yes' : 'NO' %>)</td></tr></table>
 

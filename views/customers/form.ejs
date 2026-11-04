@@ -1,5 +1,6 @@
 <%- include('../partials/header') %>
-<% const isNew = !c.id; const v = function (k) { return val(k, c[k] == null ? '' : (k === 'dob' ? fd(c[k]) : k === 'usual_income' && c[k] ? (c[k] / 100).toFixed(2) : c[k])); };
+<% const isNew = !c.id; const v = function (k) { return val(k, c[k] == null ? '' : (k === 'dob' ? fd(c[k]) : ['mobile', 'second_phone', 'nok_phone'].includes(k) ? fmtPhone(c[k]) : k === 'usual_income' && c[k] ? (c[k] / 100).toFixed(2) : c[k])); };
+   const tel = 'type="tel" pattern="' + phonePattern + '" title="Write the number as ' + phoneFormat + '" placeholder="(+675) 7123-4567"';
    const sel = function (k, opt) { return String(v(k)) === String(opt) ? 'selected' : ''; }; %>
 <div class="pagehead"><div><h1><%= isNew ? 'Register customer' : 'Edit ' + c.customer_no %></h1>
 <div class="muted">Fields marked <span style="color:var(--bad)">*</span> are required. Income is recorded but not required, because the item secures the loan.</div></div></div>
@@ -23,9 +24,9 @@
 </fieldset>
 <fieldset><legend>Contact</legend>
   <div class="row">
-    <div><label>Mobile number <span class="req">*</span></label><input name="mobile" value="<%= v('mobile') %>" placeholder="+675 7xxx xxxx" data-network-in required><div class="hint">8 digits. Digicel 70–74, 79 · Telikom 75, 76, 78 · Vodafone 81–83. Confirmed by SMS code after saving.</div></div>
+    <div><label>Mobile number <span class="req">*</span></label><input name="mobile" value="<%= v('mobile') %>" <%- tel %> data-network-in required><div class="hint">Write as (+675) 71234567 or (+675) 7123-4567. Digicel 70–74, 79 · Telikom 75, 76, 78 · Vodafone 81–83. Confirmed by SMS code after saving.</div></div>
     <div><label>Network</label><input value="<%= v('mobile_network') %>" data-network-out readonly tabindex="-1" placeholder="Worked out from the number"></div>
-    <div><label>Second number</label><input name="second_phone" value="<%= v('second_phone') %>"></div>
+    <div><label>Second number</label><input name="second_phone" value="<%= v('second_phone') %>" <%- tel %>></div>
     <div><label>Email</label><input name="email" type="email" value="<%= v('email') %>"></div>
     <div><label>SMS language</label><select name="sms_language"><option value="en" <%= sel('sms_language', 'en') %>>English</option><option value="tpi" <%= sel('sms_language', 'tpi') %>>Tok Pisin</option></select></div>
   </div>
@@ -62,7 +63,7 @@
   <div class="row">
     <div><label>Name <span class="req">*</span></label><input name="nok_name" value="<%= v('nok_name') %>" required></div>
     <div><label>Relationship <span class="req">*</span></label><input name="nok_relationship" value="<%= v('nok_relationship') %>" required></div>
-    <div><label>Phone <span class="req">*</span></label><input name="nok_phone" value="<%= v('nok_phone') %>" required></div>
+    <div><label>Phone <span class="req">*</span></label><input name="nok_phone" value="<%= v('nok_phone') %>" <%- tel %> required></div>
     <div><label>Village or address <span class="req">*</span></label><input name="nok_address" value="<%= v('nok_address') %>" required></div>
   </div>
 </fieldset>

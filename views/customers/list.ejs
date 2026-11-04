@@ -10,7 +10,7 @@
 <% if (!list.length) { %><tr><td colspan="7" class="empty">No customers found.</td></tr><% } %>
 <% list.forEach(function (c) { %>
 <tr><td><a href="/customers/<%= c.id %>"><%= c.customer_no %></a></td><td><%= c.surname %>, <%= c.given_names %></td><td><%= fd(c.dob) %></td>
-<td class="nowrap"><%= "+675 " + c.mobile.slice(0,4) + " " + c.mobile.slice(4) %><div class="small muted"><%= c.mobile_network %></div></td><td><%- include('../partials/badge', { s: c.status }) %></td><td><%- include('../partials/badge', { s: c.verification_status }) %></td><td><%= c.risk_grade %></td></tr>
+<td class="nowrap"><%= fmtPhone(c.mobile) %><div class="small muted"><%= c.mobile_network %></div></td><td><%- include('../partials/badge', { s: c.status }) %></td><td><%- include('../partials/badge', { s: c.verification_status }) %></td><td><%= c.risk_grade %></td></tr>
 <% }) %>
 </tbody></table></div>
 <%- include('../partials/footer') %>
