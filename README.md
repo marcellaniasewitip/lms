@@ -39,6 +39,7 @@ node tests/smoke-ui.js         # opens every screen as each role (server must be
 | Spec section | Where |
 |---|---|
 | Roles and permission table, two-person rules | `src/lib/ctx.js`, checks in every service (`requireRole`); creator ≠ approver, requester ≠ approver for waivers and reversals |
+| PNG mobile numbers: Digicel and Telikom +675 7xxx xxxx (Telikom also 9 digits), Vodafone +675 8xxx xxxx; the number must match the chosen network | `src/lib/phone.js`, `tests/phone.test.js` |
 | Customer profile fields, mobile confirmed by SMS code, consents | `src/services/customers.js`, `views/customers/form.ejs` |
 | Accepted IDs, the two-valid-IDs rule (1–8), duplicate check | `customers.addId / reviewId / twoIdRule / findDuplicates`; ID numbers stored encrypted with an HMAC for lookup |
 | Collateral: approved brands and minimum years, checks before accepting, IMEI (Luhn), stolen list, at least 4 photos | `src/services/items.js` |

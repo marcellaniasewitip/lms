@@ -28,13 +28,10 @@ const REQUIRED = {
 const EDITABLE = [...Object.keys(REQUIRED), 'second_phone', 'email', 'po_box', 'employer', 'occupation', 'usual_income',
   'bank_name', 'sms_language'];
 
-// PNG mobiles are 8 digits starting with 7 (Digicel, Vodafone/bmobile); +675 prefix optional.
-function normMobile(s) {
-  let n = String(s || '').replace(/\D/g, '');
-  if (n.startsWith('675') && n.length === 11) n = n.slice(3);
-  return /^7\d{7}$/.test(n) ? n : null;
-}
-function displayMobile(n) { return n ? `+675 ${n.slice(0, 4)} ${n.slice(4)}` : ''; }
+// PNG mobiles for Digicel, Telikom and Vodafone — the rules live in lib/phone.js.
+const phone = require('../lib/phone');
+const normMobile = phone.normalize;
+const displayMobile = phone.display;
 
 function get(id) {
   const c = db.get().prepare('SELECT * FROM customers WHERE id = ?').get(id);
@@ -56,7 +53,8 @@ function validate(c, onDate) {
   const errs = [];
   for (const [k, label] of Object.entries(REQUIRED)) if (!c[k]) errs.push(`${label} is required.`);
   if (c.dob && dates.ageOn(c.dob, onDate) < 18) errs.push('The pledger must be 18 or over.');
-  if (c.mobile && !normMobile(c.mobile)) errs.push('Mobile number must be a PNG mobile: 8 digits starting with 7.');
+  if (c.mobile_network && !phone.NETWORKS[c.mobile_network]) errs.push('Choose the mobile network: Digicel, Telikom or Vodafone.');
+  else if (c.mobile) { const pr = phone.problem(c.mobile, c.mobile_network); if (pr) errs.push(pr); }
   if (c.second_phone && !/^[+\d\s-]{7,15}$/.test(c.second_phone)) errs.push('Second number is not a valid phone number.');
   if (c.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email)) errs.push('Email is not valid.');
   if (c.residence_proof_type && !RESIDENCE_PROOF.includes(c.residence_proof_type)) errs.push('Choose a residence proof type.');
@@ -359,5 +357,5 @@ function bankFor(ctx, c) {
 module.exports = {
   PROVINCES, RESIDENCE_PROOF, REQUIRED, get, fullName, create, update, sendMobileCode, confirmMobileCode, idTypes, ids, addId, reviewId,
   twoIdRule, profileComplete, loanReadiness, recomputeVerification, resolveDuplicate, setStatus, search, idNumberFor, bankFor,
-  normMobile, displayMobile,
+  normMobile, displayMobile, NETWORKS: phone.NAMES,
 };

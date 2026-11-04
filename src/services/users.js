@@ -8,6 +8,7 @@ const { RuleError, NotFound, rule } = require('../lib/errors');
 const { requireRole } = require('../lib/ctx');
 const { MAX_LOGIN_ATTEMPTS } = require('../config');
 const notify = require('./notify');
+const phone = require('../lib/phone');
 
 function passwordProblems(pw, username = '') {
   const p = [];
@@ -36,13 +37,13 @@ function create(ctx, { username, full_name, role, branch_id, mobile, password })
   if (!full_name) errs.push('Full name is required.');
   if (!['admin', 'loan_officer', 'cro'].includes(role)) errs.push('Each user has exactly one role: Admin, Loan Officer or CRO.');
   if (role !== 'admin' && !branch_id) errs.push('Loan Officers and CROs belong to a branch.');
-  if (!/^(\+?675)?\s?7\d{3}\s?\d{4}$/.test((mobile || '').replace(/\s/g, ''))) errs.push('A PNG mobile number is needed for the SMS sign-in code.');
+  if (!phone.normalize(mobile)) errs.push('A PNG mobile number is needed for the SMS sign-in code: Digicel or Telikom +675 7xxx xxxx, or Vodafone +675 8xxx xxxx.');
   const pp = passwordProblems(password, username);
   if (pp.length) errs.push('Password needs ' + pp.join(', ') + '.');
   if (db.get().prepare('SELECT 1 FROM users WHERE username = ?').get(username)) errs.push('That username is taken.');
   if (errs.length) throw new RuleError('The user cannot be created.', errs);
   const info = db.get().prepare(`INSERT INTO users(username, full_name, role, branch_id, mobile, password_hash, must_change_pw, created_at)
-    VALUES (?,?,?,?,?,?,?,?)`).run(username, full_name, role, role === 'admin' ? (branch_id || null) : branch_id, mobile.replace(/\s/g, ''),
+    VALUES (?,?,?,?,?,?,?,?)`).run(username, full_name, role, role === 'admin' ? (branch_id || null) : branch_id, '+675' + phone.normalize(mobile),
     bcrypt.hashSync(password, 12), ctx ? 1 : 0, dates.nowIso());
   if (ctx) audit.log(ctx, 'user_create', 'user', info.lastInsertRowid, null, { username, full_name, role, branch_id });
   return info.lastInsertRowid;
@@ -52,7 +53,8 @@ function update(ctx, id, { full_name, branch_id, mobile, active }) {
   requireRole(ctx, 'admin');
   const u = get(id);
   rule(!(u.id === ctx.user.id && active === false), 'You cannot deactivate your own account.');
-  const after = { full_name: full_name || u.full_name, branch_id: u.role === 'admin' ? (branch_id || null) : (branch_id || u.branch_id), mobile: mobile || u.mobile, active: active === undefined ? u.active : active ? 1 : 0 };
+  if (mobile && !phone.normalize(mobile)) throw new RuleError('A PNG mobile number is needed for the SMS sign-in code: Digicel or Telikom +675 7xxx xxxx, or Vodafone +675 8xxx xxxx.');
+  const after = { full_name: full_name || u.full_name, branch_id: u.role === 'admin' ? (branch_id || null) : (branch_id || u.branch_id), mobile: mobile ? '+675' + phone.normalize(mobile) : u.mobile, active: active === undefined ? u.active : active ? 1 : 0 };
   db.get().prepare('UPDATE users SET full_name = ?, branch_id = ?, mobile = ?, active = ? WHERE id = ?').run(after.full_name, after.branch_id, after.mobile, after.active, id);
   const [o, n] = audit.diff(u, after);
   audit.log(ctx, 'user_update', 'user', id, o, n);

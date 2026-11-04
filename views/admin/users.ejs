@@ -17,7 +17,7 @@
   <div><label>Username</label><input name="username" value="<%= val('username') %>" required></div><div><label>Full name</label><input name="full_name" value="<%= val('full_name') %>" required></div>
   <div><label>Role</label><select name="role"><option value="loan_officer">Loan Officer</option><option value="cro">CRO (Credit Risk Officer)</option><option value="admin">Admin</option></select></div>
   <div><label>Branch</label><select name="branch_id"><option value="">All (Admin only)</option><% branches.forEach(function (b) { %><option value="<%= b.id %>"><%= b.name %></option><% }) %></select></div>
-  <div><label>Mobile (for the SMS sign-in code)</label><input name="mobile" value="<%= val('mobile') %>" placeholder="+675 7xxx xxxx" required></div>
+  <div><label>Mobile (for the SMS sign-in code)</label><input name="mobile" value="<%= val('mobile') %>" placeholder="+675 7xxx xxxx or 8xxx xxxx" required></div>
   <div><label>Temporary password</label><input name="password" type="password" required></div></div>
   <p class="hint">Strong passwords: 10+ characters with upper and lower case, a number and a symbol. Sessions sign out after 15 minutes idle; 5 wrong attempts lock the account.</p>
   <div class="actions"><button class="btn">Create user</button></div></form></div>

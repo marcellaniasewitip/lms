@@ -273,6 +273,8 @@ function open(file = DB_FILE) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  // Networks are now Digicel, Telikom and Vodafone (Vodafone numbers start with 8).
+  db.prepare("UPDATE customers SET mobile_network = CASE WHEN mobile LIKE '8%' THEN 'Vodafone' ELSE 'Telikom' END WHERE mobile_network = 'Vodafone/bmobile'").run();
   return db;
 }
 function get() { return db || open(); }
