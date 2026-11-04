@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1><%= handback ? 'Hand items back' : 'Return item' %> — loan <%= l.loan_no %></h1>
+<div class="muted"><%= c.given_names %> <%= c.surname %> · <%= handback ? STATUS[l.status] + ' application' : 'balance ' + K(owing) %></div></div></div>
+<% if (!handback && owing !== 0) { %><div class="alert alert-error">The balance is <%= K(owing) %>. An item is returned only when the balance is K0.00.</div><% } %>
+<form method="post" action="/loans/<%= l.id %>/return?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
+<% if (!handback) { %>
+<fieldset><legend>1. Pledge ticket</legend>
+  <label class="check"><input type="checkbox" name="ticket_presented" value="1"> The pledger has brought the pledge ticket (or a replacement ticket).</label>
+  <label>Scan the ticket barcode (optional)</label><input name="ticket_no" placeholder="<%= l.loan_no %>" data-scan>
+</fieldset>
+<fieldset><legend>2. Who is collecting</legend>
+  <label class="check"><input type="radio" name="collector" value="customer" checked> The customer</label>
+  <label class="check"><input type="radio" name="collector" value="authorised"> Someone the customer named in writing</label>
+  <div data-show-when="collector=authorised"><div class="row"><div><label>Name of person collecting</label><input name="authorised_name"></div><div><label>Scan of the written authority</label><input type="file" name="authority" accept="image/*,application/pdf"></div></div></div>
+</fieldset>
+<% } %>
+<fieldset><legend><%= handback ? '1' : '3' %>. ID shown — must be one of the same IDs</legend>
+  <div class="row"><div><label>ID</label><select name="id_record_id"><% ids.forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %> ending <%= x.number_last4 %></option><% }) %></select></div>
+  <div><label>Type the number from the ID shown</label><input name="id_number_shown" required autocomplete="off"></div></div>
+</fieldset>
+<fieldset><legend><%= handback ? '2' : '4' %>. Check the item against the intake photos</legend>
+  <% lis.forEach(function (i) { %>
+    <h3><%= i.item_no %> — <%= i.brand_name %> <%= i.model %> <span class="muted small"><%= i.location %></span></h3>
+    <div class="photos"><% photos(i.item_id).forEach(function (p) { %><a href="/files/<%= p.id %>"><img src="/files/<%= p.id %>" alt="<%= p.kind %>"></a><% }) %></div>
+    <% if (i.category === 'car' && !handback) { %><div class="row"><div><label>Odometer now (km) — intake <%= Number(i.mileage_intake).toLocaleString() %> km</label><input name="mileage_<%= i.item_id %>" inputmode="numeric" required></div></div><% } %>
+  <% }) %>
+  <% if (!handback) { %>
+  <label class="check"><input type="checkbox" name="condition_checked" value="1"> The customer has checked the item(s) against the intake photos<%= lis.some(function (i) { return i.category === 'car'; }) ? ', and the keys and papers are handed over from the safe' : '' %>.</label>
+  <% if (lis.some(function (i) { return i.category === 'car'; })) { %><label>Explain any mileage above intake (+<%= typeof tolerance !== 'undefined' ? tolerance : 5 %> km allowed for moving in the yard)</label><input name="mileage_note"><% } %>
+  <% } %>
+</fieldset>
+<fieldset><legend><%= handback ? '3' : '5' %>. Signature of the person collecting</legend>
+  <canvas class="sig" data-field="signature_data"></canvas><input type="hidden" name="signature_data" id="signature_data">
+  <div class="actions"><button type="button" class="btn small secondary" data-clear="signature_data">Clear</button></div>
+</fieldset>
+<div class="actions"><button class="btn"><%= handback ? 'Hand back items' : 'Return item and print release slip' %></button><a href="/loans/<%= l.id %>">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

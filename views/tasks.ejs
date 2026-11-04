@@ -1,0 +1,8 @@
+<%- include('partials/header') %>
+<div class="pagehead"><div><h1>Call tasks</h1><div class="muted">When a loan reaches maturity unpaid, the customer gets an SMS and a phone call saying the item will be forfeited on the grace end date.</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>Created</th><th>Loan</th><th>Task</th><th>Status</th><th>Outcome</th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="5" class="empty">No tasks.</td></tr><% } %>
+<% list.forEach(function (t) { %><tr><td class="small nowrap"><%= fts(t.created_at) %></td><td><% if (t.loan_id) { %><a href="/loans/<%= t.loan_id %>"><%= t.loan_no %></a><% } %></td><td><%= t.title %></td><td><%- include('partials/badge', { s: t.status === 'done' ? 'ok' : 'open', label: t.status }) %></td>
+<td><% if (t.status === 'open' && is('loan_officer', 'cro')) { %><form method="post" action="/tasks/<%= t.id %>/done" class="inline"><%- include('partials/csrf') %><input name="outcome" placeholder="What happened on the call" required> <button class="btn small">Done</button></form><% } else { %><span class="small"><%= t.outcome %> — <%= t.done_by_name %> <%= fts(t.done_at) %></span><% } %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('partials/footer') %>

@@ -1,0 +1,138 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <div><h1><%= c.given_names %> <%= c.surname %></h1>
+  <div class="muted"><%= c.customer_no %> · born <%= fd(c.dob) %> · <%- include('../partials/badge', { s: c.status }) %> <%- include('../partials/badge', { s: c.verification_status }) %> · risk <%= c.risk_grade %></div></div>
+  <div class="actions" style="margin:0">
+    <% if (is('loan_officer', 'cro')) { %><a class="btn secondary" href="/customers/<%= c.id %>/edit">Edit profile</a><% } %>
+    <% if (is('loan_officer')) { %><a class="btn secondary" href="/customers/<%= c.id %>/items/new">Receive item</a>
+      <% if (readiness.ok && available.length) { %><a class="btn" href="/loans/new?customer_id=<%= c.id %>">New loan application</a><% } %><% } %>
+    <a class="btn secondary" href="/reports/customer?customer_id=<%= c.id %>">Statement</a>
+  </div>
+</div>
+
+<% if (c.verification_status === 'duplicate_review') { %>
+<div class="alert alert-warn"><strong>Possible duplicate — blocked until the CRO reviews it.</strong> <%= c.duplicate_reason %>
+  <% if (is('cro')) { %>
+  <form method="post" action="/customers/<%= c.id %>/duplicate" class="f" style="margin-top:.5rem"><%- include('../partials/csrf') %>
+    <label>CRO note</label><input name="note" required>
+    <div class="actions"><button class="btn" name="decision" value="clear">Not a duplicate — clear</button><button class="btn danger" name="decision" value="confirm">Confirm duplicate — close this profile</button></div>
+  </form><% } %>
+</div><% } %>
+<% aml.forEach(function (f) { %><div class="alert alert-error"><strong>AML:</strong> <%= f.details %> <% if (is('admin','cro')) { %><a href="/aml">Review</a><% } %></div><% }) %>
+
+<div class="panel <%= readiness.ok ? '' : '' %>">
+  <h2 style="margin-top:0">Loan readiness</h2>
+  <% if (readiness.ok) { %><p><%- include('../partials/badge', { s: 'ok', label: 'Ready' }) %> Profile complete and two valid IDs checked by the CRO. <%= available.length ? available.length + ' item(s) in store available to pledge.' : 'Receive an item to create a loan.' %></p>
+  <% } else { %><p>A loan cannot be created until:</p><ul><% readiness.reasons.forEach(function (r) { %><li><%= r %></li><% }) %></ul><% } %>
+</div>
+
+<div class="grid g2">
+<div class="panel">
+  <h2>Profile</h2>
+  <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+    <div class="photos"><% if (photo) { %><a href="/files/<%= photo.id %>"><img src="/files/<%= photo.id %>" alt="Live photo"></a><% } else { %><div class="empty">No live photo</div><% } %>
+      <% if (signature) { %><a href="/files/<%= signature.id %>"><img src="/files/<%= signature.id %>" alt="Signature" style="object-fit:contain;background:#fff"></a><% } %></div>
+    <dl class="kv small" style="flex:1">
+      <dt>Sex / marital</dt><dd><%= c.sex %> · <%= c.marital_status %></dd>
+      <dt>Citizenship</dt><dd><%= c.citizenship %></dd>
+      <dt>Origin</dt><dd><%= c.home_village %>, <%= c.home_district %>, <%= c.home_province %></dd>
+      <dt>Address</dt><dd><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %><br><span class="muted">Near <%= c.addr_landmark %><%= c.po_box ? ' · ' + c.po_box : '' %></span></dd>
+      <dt>Residence proof</dt><dd><%= c.residence_proof_type %> <% residence.forEach(function (f) { %><a href="/files/<%= f.id %>">scan</a> <% }) %></dd>
+      <dt>Work</dt><dd><%= c.occupation || '—' %><%= c.employer ? ', ' + c.employer : '' %><%= c.usual_income ? ' · ' + K(c.usual_income) : '' %></dd>
+      <dt>Bank</dt><dd><%= c.bank_name || '—' %> <%= bank.account %> <%= bank.mobile ? '· mobile ' + bank.mobile : '' %></dd>
+      <dt>Next of kin</dt><dd><%= c.nok_name %> (<%= c.nok_relationship %>), <%= c.nok_phone %>, <%= c.nok_address %></dd>
+      <dt>Consents</dt><dd>Terms <%= fts(c.consent_terms_at) %> · Data <%= fts(c.consent_data_at) %> · Forfeiture <%= fts(c.consent_forfeit_at) %></dd>
+      <dt>SMS language</dt><dd><%= c.sms_language === 'tpi' ? 'Tok Pisin' : 'English' %></dd>
+    </dl>
+  </div>
+  <% if (complete.length) { %><div class="alert alert-warn small" style="margin-top:.8rem">Profile incomplete: <%= complete.join(' ') %></div><% } %>
+</div>
+
+<div class="panel" id="mobile">
+  <h2>Mobile <%= mobile %> <%= c.mobile_network ? '(' + c.mobile_network + ')' : '' %></h2>
+  <% if (c.mobile_verified_at) { %><p><%- include('../partials/badge', { s: 'verified', label: 'Confirmed' }) %> by SMS code on <%= fts(c.mobile_verified_at) %></p>
+  <% } else if (is('loan_officer')) { %>
+    <p>Not yet confirmed. Send a code and ask the customer to read it from their phone.</p>
+    <form method="post" action="/customers/<%= c.id %>/mobile/send" class="inline"><%- include('../partials/csrf') %><button class="btn secondary small">Send SMS code</button></form>
+    <% if (demoCode) { %><div class="alert alert-warn small" style="margin-top:.5rem">Training mode (no SMS gateway): the code sent is <span class="mono"><%= demoCode %></span></div><% } %>
+    <form method="post" action="/customers/<%= c.id %>/mobile/confirm" class="f" style="max-width:260px"><%- include('../partials/csrf') %><label>Code read out by the customer</label><input name="code" inputmode="numeric" maxlength="6" required><div class="actions"><button class="btn small">Confirm</button></div></form>
+  <% } else { %><p class="muted">Not yet confirmed.</p><% } %>
+  <% if (is('cro')) { %>
+  <h3>Customer status (CRO)</h3>
+  <form method="post" action="/customers/<%= c.id %>/status" class="f"><%- include('../partials/csrf') %>
+    <div class="row"><div><label>Status</label><select name="status"><% ['active','blacklisted','deceased','inactive'].forEach(function (s) { %><option <%= c.status === s ? 'selected' : '' %>><%= s %></option><% }) %></select></div>
+    <div><label>Risk grade</label><select name="risk_grade"><% ['standard','low','medium','high'].forEach(function (s) { %><option <%= c.risk_grade === s ? 'selected' : '' %>><%= s %></option><% }) %></select></div></div>
+    <label>Reason</label><input name="note" required><div class="actions"><button class="btn small secondary">Update status</button></div>
+  </form><% } %>
+</div>
+</div>
+
+<div class="panel" id="ids">
+  <h2>Identity documents</h2>
+  <p class="small muted">Two IDs of different types; at least one primary ID with a photo matching the live photo. Name and date of birth must match the profile; IDs must not be expired; the pledger must be 18 or over.</p>
+  <div class="tablewrap"><table>
+  <thead><tr><th>Type</th><th>Number</th><th>Name / DOB on ID</th><th>Issued / expires</th><th>Scans</th><th>Name check</th><th>Status</th><th>Checked</th></tr></thead>
+  <tbody>
+  <% if (!ids.length) { %><tr><td colspan="8" class="empty">No IDs yet.</td></tr><% } %>
+  <% ids.forEach(function (x) { const expired = x.expiry_date && x.expiry_date < today; %>
+  <tr>
+    <td><%= x.type_name %><div class="small muted"><%= x.type_use.replace('_', ' ') %> · photo <%= x.type_photo %></div></td>
+    <td class="mono"><%= x.shown %></td>
+    <td><%= x.name_on_id %><div class="small"><%= fd(x.dob_on_id) %></div></td>
+    <td><%= fd(x.issue_date) || '—' %><div class="small <%= expired ? '' : 'muted' %>" style="<%= expired ? 'color:var(--bad);font-weight:600' : '' %>"><%= x.expiry_date ? (expired ? 'EXPIRED ' : '') + fd(x.expiry_date) : 'no expiry' %></div></td>
+    <td><% x.scans.forEach(function (f) { %><a href="/files/<%= f.id %>"><%= f.kind %></a> <% }) %></td>
+    <td><%- include('../partials/badge', { s: x.name_check || 'pending' }) %></td>
+    <td><%- include('../partials/badge', { s: x.status }) %><% if (x.photo_match) { %><div class="small">photo matched</div><% } %></td>
+    <td class="small"><%= x.checked_by_name || '' %><br><%= fts(x.checked_at) %><% if (x.check_note) { %><br><em><%= x.check_note %></em><% } %></td>
+  </tr>
+  <% if (is('cro') && x.status === 'pending') { %>
+  <tr><td colspan="8" style="background:#fbfaf5">
+    <form method="post" action="/customers/<%= c.id %>/ids/<%= x.id %>/review" class="f"><%- include('../partials/csrf') %>
+      <strong>CRO check:</strong> open the scans, compare with the live photo above and the profile.
+      <% if (x.name_check === 'flagged') { %><div class="alert alert-warn small">Small spelling difference between "<%= x.name_on_id %>" and the profile name — accept only with a note.</div><% } %>
+      <% if (x.name_check === 'mismatch') { %><div class="alert alert-error small">Name or date of birth does not match the profile — this ID must be rejected.</div><% } %>
+      <% if (x.type_photo === 'yes') { %><label class="check"><input type="checkbox" name="photo_match" value="1"> The photo on this ID matches the live photo taken at the branch.</label><% } %>
+      <label>Note</label><input name="note">
+      <div class="actions"><button class="btn small" name="decision" value="accept">Accept ID</button><button class="btn small danger" name="decision" value="reject">Reject ID</button></div>
+    </form></td></tr>
+  <% } %>
+  <% }) %>
+  </tbody></table></div>
+  <% if (is('loan_officer')) { %>
+  <details class="action" style="margin-top:.8rem"><summary>Add an ID</summary><div>
+    <form method="post" action="/customers/<%= c.id %>/ids?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
+      <div class="row">
+        <div><label>ID type</label><select name="id_type_id" required><% idTypes.forEach(function (t) { %><option value="<%= t.id %>" <%= String(val('id_type_id')) === String(t.id) ? 'selected' : '' %>><%= t.name %> (<%= t.use.replace('_', ' ') %>)</option><% }) %></select></div>
+        <div><label>ID number</label><input name="number" required autocomplete="off"></div>
+        <div><label>Issued by</label><input name="issued_by" value="<%= val('issued_by') %>" placeholder="Defaults to the usual issuer"></div>
+        <div><label>Issue date</label><input name="issue_date" value="<%= val('issue_date') %>" placeholder="DD/MM/YYYY"></div>
+        <div><label>Expiry date</label><input name="expiry_date" value="<%= val('expiry_date') %>" placeholder="DD/MM/YYYY"></div>
+        <div><label>Name exactly as on the ID</label><input name="name_on_id" value="<%= val('name_on_id', c.given_names + ' ' + c.surname) %>" required></div>
+        <div><label>Date of birth on the ID</label><input name="dob_on_id" value="<%= val('dob_on_id', fd(c.dob)) %>" placeholder="DD/MM/YYYY" required></div>
+        <div><label>Front scan</label><input type="file" name="front" accept="image/*,application/pdf" required></div>
+        <div><label>Back scan</label><input type="file" name="back" accept="image/*,application/pdf"></div>
+      </div>
+      <div class="actions"><button class="btn">Add ID</button></div>
+    </form></div></details><% } %>
+</div>
+
+<div class="panel">
+  <h2>Items</h2>
+  <% if (!items.length) { %><div class="empty">No items received yet.</div><% } else { %>
+  <div class="tablewrap"><table><thead><tr><th>Tag</th><th>Item</th><th>Status</th><th>Location</th><th>Received</th></tr></thead><tbody>
+  <% items.forEach(function (i) { %><tr><td><a href="/items/<%= i.id %>"><%= i.item_no %></a></td><td><%= i.brand_name %> <%= i.model %> <span class="muted small"><%= i.category %></span></td><td><%- include('../partials/badge', { s: i.custody_status }) %></td><td><%= i.location %></td><td><%= fd(i.date_in) %></td></tr><% }) %>
+  </tbody></table></div><% } %>
+</div>
+
+<div class="panel">
+  <h2>Loans</h2>
+  <p class="small muted">Past loans show as one line each.</p>
+  <% if (!loans.length) { %><div class="empty">No loans yet.</div><% } else { %>
+  <div class="tablewrap"><table><thead><tr><th>Loan</th><th class="num">Amount</th><th>Released</th><th>Maturity</th><th>Closed</th><th>Item</th><th>Outcome / status</th><th class="num">Owing</th></tr></thead><tbody>
+  <% loans.forEach(function (l) { const hidden = l.archived && is('loan_officer'); %>
+  <tr><td><% if (hidden) { %><%= l.loan_no %><% } else { %><a href="<%= l.archived ? '/archive/loan/' + l.id : '/loans/' + l.id %>"><%= l.loan_no %></a><% } %></td>
+  <td class="num"><%= K(l.amount_released || l.approved_amount || l.requested_amount) %></td><td><%= fd(l.release_date) %></td><td><%= fd(l.maturity_date) %></td><td><%= fd(l.date_closed) %></td>
+  <td><%= l.items %></td><td><%- include('../partials/badge', { s: l.archived ? l.pre_archive_status : l.status }) %><%= l.archived ? ' (archived)' : '' %></td><td class="num"><%= ['active','in_grace'].includes(l.status) ? K(l.owing) : '' %></td></tr>
+  <% }) %></tbody></table></div><% } %>
+</div>
+<%- include('../partials/footer') %>

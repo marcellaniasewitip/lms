@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Payments to match</h1><div class="muted">Customers quote their loan number as the payment reference. Match each incoming payment the same day; unmatched payments wait here.</div></div></div>
+<% if (is('loan_officer')) { %>
+<details class="action panel" style="padding:0"><summary>Add an incoming bank deposit or mobile transfer</summary><div>
+<form method="post" action="/payments/unmatched" class="f"><%- include('../partials/csrf') %>
+  <div class="row"><div><label>Amount (K)</label><input name="amount" required></div><div><label>Channel</label><select name="channel"><option value="bank">Bank deposit</option><option value="mobile">Mobile banking transfer</option></select></div>
+  <div><label>Reference as shown on the statement</label><input name="reference" required></div><div><label>Date received</label><input name="date_received" value="<%= fd(today) %>"></div>
+  <div><label>Payer name</label><input name="payer_name"></div><div><label>Note</label><input name="note"></div></div>
+  <div class="actions"><button class="btn">Add to holding list</button></div></form></div></details>
+<% } %>
+<div class="tablewrap"><table><thead><tr><th>Received</th><th>Channel</th><th>Reference</th><th>Payer</th><th class="num">Amount</th><th>Match to loan</th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="6" class="empty">Nothing waiting to be matched.</td></tr><% } %>
+<% list.forEach(function (u) { %><tr><td><%= fd(u.date_received) %></td><td><%= CHANNELS[u.channel] %></td><td class="mono"><%= u.reference %></td><td><%= u.payer_name || '' %><div class="small muted"><%= u.note || '' %></div></td><td class="num"><%= K(u.amount) %></td>
+<td><% if (is('loan_officer')) { %><form method="post" action="/payments/unmatched/<%= u.id %>/match" class="inline"><%- include('../partials/csrf') %>
+<input name="loan_no" value="<%= u.suggestions[0] ? u.suggestions[0].loan_no : '' %>" placeholder="Loan no." style="width:7rem" required> <button class="btn small">Match & post</button></form>
+<% if (u.suggestions.length) { %><div class="small muted">Suggested from the reference: <%= u.suggestions.map(function (s) { return s.loan_no; }).join(', ') %></div><% } %><% } %></td></tr><% }) %>
+</tbody></table></div>
+<h2>Recently matched</h2>
+<table><tr><th>Received</th><th>Reference</th><th class="num">Amount</th><th>Loan</th><th>Matched</th></tr><% matched.forEach(function (u) { %><tr><td><%= fd(u.date_received) %></td><td><%= u.reference %></td><td class="num"><%= K(u.amount) %></td><td><a href="/loans/<%= u.matched_loan_id %>"><%= u.loan_no %></a></td><td><%= fts(u.matched_at) %></td></tr><% }) %></table>
+<%- include('../partials/footer') %>

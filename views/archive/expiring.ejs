@@ -1,0 +1,8 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Expiring loans</h1><div class="muted">Loans due to be pulled out in the next 7 days (and any overdue), so errors can be caught first. A loan is pulled out only when it is closed, the balance is K0.00 or it was closed by sale, 30 days have passed, the item is no longer held, and no dispute or reversal is open. A loan whose item is still in the store is never pulled out.</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>Loan</th><th>Status</th><th>Closed</th><th>Expiry date</th><th>Check</th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="5" class="empty">No loans expiring in the next 7 days.</td></tr><% } %>
+<% list.forEach(function (l) { %><tr><td><a href="/loans/<%= l.id %>"><%= l.loan_no %></a></td><td><%- include('../partials/badge', { s: l.status }) %><%= l.archive_hold ? ' (restored — hold)' : '' %></td><td><%= fd(l.date_closed) %></td><td><%= fd(l.expiry_date) %></td>
+<td><% if (l.eligible) { %><%- include('../partials/badge', { s: 'ok', label: 'will be archived' }) %><% } else { %><ul class="small" style="margin:0;padding-left:1rem"><% l.reasons.forEach(function (r) { %><li><%= r %></li><% }) %></ul><% } %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

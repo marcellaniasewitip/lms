@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title><%= title %></title>
+<link rel="stylesheet" href="/static/css/app.css">
+<style>
+  body { background:#fff; font-size: 12px; }
+  .sheet { max-width: 800px; margin: 0 auto 2rem; border: 1px solid #000; padding: 14px 18px; position: relative; page-break-after: always; }
+  .sheet h1 { font-size: 20px; margin: 0; } .sheet h2 { font-size: 13px; margin: 10px 0 4px; border-bottom: 1px solid #000; text-transform: uppercase; letter-spacing: .04em; }
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .copy { font-weight: 700; border: 1px solid #000; padding: 2px 6px; font-size: 11px; }
+  table.t { width: 100%; border-collapse: collapse; } table.t td, table.t th { border: 1px solid #555; padding: 3px 5px; font-size: 11.5px; background: #fff; }
+  table.t th { width: 32%; text-transform: none; letter-spacing: 0; color: #000; background: #f2f2f2; }
+  ol.terms { margin: 4px 0 4px 18px; padding: 0; } ol.terms li { margin-bottom: 2px; }
+  .sig { display: flex; gap: 24px; margin-top: 14px; } .sig div { flex: 1; border-top: 1px solid #000; padding-top: 3px; }
+  .stamp { position: absolute; top: 38%; left: 8%; right: 8%; text-align: center; font-size: 64px; font-weight: 800; color: rgba(170,0,0,.22); transform: rotate(-14deg); pointer-events: none; letter-spacing: .1em; }
+  .stamp-top { background:#fff; text-align:center; font-weight:800; letter-spacing:.1em; position: static; transform: none; font-size: 22px; color: #a00; border: 3px solid #a00; margin-bottom: 6px; }
+  .note { font-style: italic; }
+  @media print { .noprint { display: none; } .sheet { border: 1px solid #000; } }
+</style></head><body>
+<div class="noprint" style="max-width:800px;margin:1rem auto"><button class="btn" data-print>Print both copies</button> <a href="/loans/<%= l.id %>">Back to loan</a>
+<% if (preview) { %><span class="alert alert-warn" style="display:inline-block;margin:0 0 0 1rem;padding:.3rem .6rem">Preview — figures assume release today; the ticket is final once money is released.</span><% } %></div>
+<% const t0 = fig.terms; const expired = t && t.status === 'expired'; const replacement = t && t.kind === 'replacement';
+   ['PLEDGER\'S COPY', 'LENDER\'S COPY — signed and scanned into the loan'].forEach(function (copy) { %>
+<div class="sheet">
+  <% if (expired) { %><div class="stamp-top">EXPIRED</div><% } %>
+  <% if (replacement) { %><div class="stamp">REPLACEMENT</div><% } %>
+  <div class="hdr">
+    <div><h1><%= t0.lender_name %></h1><div class="note"><%= t0.lender_slogan %></div>
+      <div><strong>Pledge ticket for goods details in Schedule 1</strong></div><div>Required by the Pawnbrokers Act 1951</div></div>
+    <div style="text-align:right"><span class="copy"><%= copy %></span><br><img src="/loans/<%= l.id %>/barcode.png" alt="<%= l.loan_no %>" style="height:52px;margin-top:6px"><br>
+    <% if (t) { %>Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
+  </div>
+
+  <h2>Our details</h2>
+  <table class="t"><tr><th>Lender</th><td><%= t0.lender_name %> — <%= branch.name %></td></tr>
+  <tr><th>Phone / email</th><td><%= branch.phone %> · <%= branch.email %></td></tr>
+  <tr><th>Postal address</th><td><%= branch.postal_address %></td></tr>
+  <tr><th>Address where goods are redeemed</th><td><%= branch.physical_address %></td></tr></table>
+
+  <h2>Your details</h2>
+  <table class="t"><tr><th>Pledger</th><td><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</td></tr>
+  <tr><th>Postal address</th><td><%= c.po_box || '—' %></td></tr>
+  <tr><th>Residential address</th><td><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %> (near <%= c.addr_landmark %>)</td></tr>
+  <tr><th>Phone</th><td>+675 <%= c.mobile %></td></tr>
+  <tr><th>ID type and number</th><td><%= idText %></td></tr>
+  <tr><th>Date of birth</th><td><%= fd(c.dob) %> (18 or over: <%= dates.ageOn(c.dob, fig.release) >= 18 ? 'yes' : 'NO' %>)</td></tr></table>
+
+  <h2>Contract</h2>
+  <table class="t"><tr><th>Contract number</th><td><strong><%= l.loan_no %></strong></td></tr>
+  <tr><th>Contract date</th><td><%= fd(fig.release) %></td></tr>
+  <tr><th>Amount advanced</th><td><%= K(fig.amount) %></td></tr>
+  <tr><th>Redemption fee</th><td><%= K(fig.weeklyCharge) %> (<%= l.weekly_rate %>% of the principal owed) charged on the contract date and every 7 days to the redemption date: <%= fig.charges %> charges = <%= K(fig.totalCharges) %><%= fig.fees ? '; plus fees ' + K(fig.fees) : '' %></td></tr>
+  <tr><th>Amount payable at redemption (redemption price)</th><td><strong><%= K(fig.price) %></strong></td></tr>
+  <tr><th>Redemption date</th><td><strong><%= fd(fig.redemptionDate) %></strong></td></tr>
+  <tr><th>Redemption period</th><td><%= t0.term_months %> months from the contract date (grace period <%= t0.grace_days %> days, to <%= fd(fig.graceEnd) %>)</td></tr></table>
+  <p class="note">A lesser amount may be payable if you redeem the goods before the redemption date (<%= fd(fig.redemptionDate) %>).</p>
+
+  <h2>Terms</h2>
+  <ol class="terms"><% t0.ticket_terms.forEach(function (x) { %><li><%= x %></li><% }) %></ol>
+
+  <h2>Pledger confirmations</h2><p><%= t0.pledger_confirmations %></p>
+  <h2>Rights and obligations</h2><p><%= t0.rights_obligations %></p>
+
+  <h2>Schedule 1 – The goods</h2>
+  <table class="t" style="font-size:11px"><tr style="background:#f2f2f2"><td><strong>Item no.</strong></td><td><strong>Category</strong></td><td><strong>Brand / model</strong></td><td><strong>Specs</strong></td><td><strong>Serial / IMEI / VIN</strong></td><td><strong>Accessories</strong></td><td><strong>Device password</strong></td></tr>
+  <% lis.forEach(function (i) { %><tr><td><%= i.schedule_no %><br><span class="small"><%= i.item_no %></span></td><td><%= i.category %></td><td><%= i.brand_name %> <%= i.model %> <%= i.year || '' %> <%= i.colour || '' %></td>
+  <td><%= i.category === 'car' ? 'Odometer ' + Number(i.mileage_intake).toLocaleString() + ' km, fuel ' + i.fuel_intake : (i.storage || '') + ' / ' + (i.ram || '') + ' ' + (i.processor || '') %></td>
+  <td><%= i.category === 'car' ? 'VIN ' + i.vin + ', engine ' + i.engine_no + ', plate ' + i.plate : (i.imei ? 'IMEI ' + i.imei : 'S/N ' + i.serial_no) %></td><td><%= JSON.parse(i.accessories || '[]').join(', ') %></td><td><%= i.category === 'car' ? '—' : i.password %></td></tr><% }) %></table>
+
+  <div class="sig"><div>Pledger: <%= c.given_names %> <%= c.surname %></div><div>For the lender: <%= officer %> (Loan Officer)</div><div>Date: <%= fd(fig.release) %></div></div>
+</div>
+
+<div class="sheet">
+  <% if (expired) { %><div class="stamp-top">EXPIRED</div><% } %>
+  <div class="hdr"><div><h1>Disclosure Statement</h1><div>Contract <%= l.loan_no %> · <%= t0.lender_name %></div></div><span class="copy"><%= copy %></span></div>
+  <table class="t" style="margin-top:8px">
+    <tr><th>Amount advanced</th><td><%= K(fig.amount) %></td></tr>
+    <tr><th>Weekly interest rate</th><td><%= l.weekly_rate %>% a week on the principal still owed (set by the item's quality grade <%= l.rate_grade %>)</td></tr>
+    <tr><th>Interest for a full week on the amount advanced</th><td><%= K(fig.weeklyCharge) %></td></tr>
+    <tr><th>Fees</th><td><% const fl = JSON.parse(l.fee_lines || '[]'); %><%= fl.length ? fl.map(function (f) { return f.name + ' ' + K(f.amount); }).join('; ') : 'None' %></td></tr>
+    <tr><th>Redemption price if nothing is paid before <%= fd(fig.redemptionDate) %></th><td><strong><%= K(fig.price) %></strong></td></tr>
+    <tr><th>Maturity (redemption) date</th><td><%= fd(fig.redemptionDate) %> — no renewals or extensions</td></tr>
+    <tr><th>Grace period</th><td><%= t0.grace_days %> days to <%= fd(fig.graceEnd) %>; interest keeps being added each week</td></tr>
+    <tr><th>If not paid by the grace end date</th><td>The goods are forfeited and sold at a public internet auction (or by other reasonable means). Any surplus over the amount owing is paid to you as section 19 of the Pawnbrokers Act 1951 requires.</td></tr>
+    <tr><th>Example of early redemption</th><td>Paying in full after 2 weeks with no part payments costs <%= K(fig.amount + 2 * fig.weeklyCharge + fig.fees) %>.</td></tr>
+  </table>
+  <p style="margin-top:8px"><%= t0.disclosure_extra %></p>
+  <div class="sig"><div>Pledger signature</div><div>Lender's officer: <%= officer %></div></div>
+</div>
+<% }) %>
+<script src="/static/js/app.js"></script>
+</body></html>

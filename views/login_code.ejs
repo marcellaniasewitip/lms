@@ -1,0 +1,12 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <h1>Enter the SMS code</h1>
+  <p class="muted">We sent a 6-digit code to your mobile. It is valid for 5 minutes.</p>
+  <% if (demoCode) { %><div class="alert alert-warn"><strong>Training mode</strong> — no SMS gateway is configured. Your code is <span class="mono"><%= demoCode %></span>. Set <span class="mono">LMS_SHOW_CODES=0</span> in production.</div><% } %>
+  <form method="post" action="/login/code" class="f" autocomplete="off">
+    <%- include('partials/csrf') %>
+    <label for="c">Code</label><input id="c" name="code" inputmode="numeric" pattern="\d{6}" maxlength="6" required autofocus>
+    <div class="actions"><button class="btn">Sign in</button> <a href="/login">Start again</a></div>
+  </form>
+</div>
+<%- include('partials/footer') %>

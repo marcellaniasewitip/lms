@@ -1,0 +1,92 @@
+<%- include('partials/header') %>
+<div class="pagehead"><div><h1>Good day, <%= user.full_name.split(' ')[0] %></h1><div class="muted"><%= ROLE_LABEL[user.role] %> dashboard · <%= fd(today) %> (Port Moresby time)</div></div>
+<% if (is('loan_officer')) { %><div class="actions" style="margin:0"><a class="btn" href="/customers/new">Register customer</a><a class="btn secondary" href="/loans/redeem">Redeem — scan ticket</a></div><% } %>
+</div>
+
+<% if (is('loan_officer')) { %>
+<div class="grid g4">
+  <div class="stat"><div class="n"><%= data.maturing.length %></div><div class="l">Maturing in the next 7 days</div></div>
+  <div class="stat"><div class="n"><%= data.toMatch.length %></div><div class="l">Payments to match</div></div>
+  <div class="stat"><div class="n"><%= data.toReturn.length %></div><div class="l">Items to return (paid in full)</div></div>
+  <div class="stat"><div class="n"><%= data.tasks.length %></div><div class="l">Open call tasks</div></div>
+</div>
+<div class="grid g2" style="margin-top:1rem">
+  <div class="panel"><h2>Customers maturing in the next 7 days</h2><%- include('partials/loantable', { rows: data.maturing, cols: ['maturity'] }) %></div>
+  <div class="panel"><h2>Items to return today</h2><%- include('partials/loantable', { rows: data.toReturn }) %>
+    <% if (data.handBack.length) { %><h3>Items to hand back (rejected or cancelled)</h3><%- include('partials/loantable', { rows: data.handBack }) %><% } %></div>
+  <div class="panel"><h2>Payments to match</h2>
+    <% if (!data.toMatch.length) { %><div class="empty">None waiting.</div><% } else { %>
+    <table><tr><th>Received</th><th>Reference</th><th class="num">Amount</th></tr>
+    <% data.toMatch.forEach(function (u) { %><tr><td><%= fd(u.date_received) %></td><td><%= u.reference %></td><td class="num"><%= K(u.amount) %></td></tr><% }) %></table>
+    <p><a href="/payments/unmatched">Match payments →</a></p><% } %>
+  </div>
+  <div class="panel"><h2>Approved — ready to release</h2><%- include('partials/loantable', { rows: data.toRelease }) %>
+    <h3>Drafts and returned applications</h3><%- include('partials/loantable', { rows: data.returned }) %></div>
+  <div class="panel"><h2>Loans in grace</h2><%- include('partials/loantable', { rows: data.grace, cols: ['grace'] }) %></div>
+  <div class="panel"><h2>Call tasks</h2>
+    <% if (!data.tasks.length) { %><div class="empty">No calls to make.</div><% } else { data.tasks.forEach(function (t) { %><p class="small"><%= t.title %></p><% }) %><p><a href="/tasks">Open call tasks →</a></p><% } %></div>
+</div>
+<% } %>
+
+<% if (is('cro')) { %>
+<div class="grid g4">
+  <div class="stat"><div class="n"><%= data.waiting.length %></div><div class="l">Applications waiting for valuation</div></div>
+  <div class="stat"><div class="n"><%= data.grace.length %></div><div class="l">Loans in grace</div></div>
+  <div class="stat"><div class="n"><%= data.toForfeit.length %></div><div class="l">Forfeitures to declare</div></div>
+  <div class="stat"><div class="n"><%= data.idChecks.length + data.duplicates.length %></div><div class="l">ID checks and duplicate reviews</div></div>
+</div>
+<div class="grid g2" style="margin-top:1rem">
+  <div class="panel"><h2>Applications waiting for valuation and decision</h2><%- include('partials/loantable', { rows: data.waiting }) %></div>
+  <div class="panel"><h2>Forfeitures to declare</h2><p class="small muted">Grace period ended with money still owing.</p><%- include('partials/loantable', { rows: data.toForfeit, cols: ['grace'] }) %></div>
+  <div class="panel"><h2>Loans in grace</h2><%- include('partials/loantable', { rows: data.grace, cols: ['grace'] }) %></div>
+  <div class="panel"><h2>IDs to verify</h2>
+    <% if (!data.idChecks.length && !data.duplicates.length) { %><div class="empty">Nothing waiting.</div><% } %>
+    <% data.idChecks.forEach(function (x) { %><p><a href="/customers/<%= x.customer_id %>#ids"><%= x.customer_no %> · <%= x.name %></a> — <%= x.type_name %></p><% }) %>
+    <% data.duplicates.forEach(function (x) { %><p><a href="/customers/<%= x.id %>"><%= x.customer_no %> · <%= x.given_names %> <%= x.surname %></a> — <%- include('partials/badge', { s: 'duplicate_review', label: 'possible duplicate' }) %></p><% }) %>
+    <% if (data.waivers.length) { %><h3>Waivers to approve</h3><% data.waivers.forEach(function (w) { %><p><a href="/loans/<%= w.loan_id %>">Loan <%= w.loan_no %></a>: <%= K(w.amount) %> of <%= w.kind %> — <%= w.reason %></p><% }) %><% } %>
+    <% if (data.stockToSign.length) { %><h3>Stock counts to sign off</h3><% data.stockToSign.forEach(function (s) { %><p><a href="/stock/<%= s.id %>"><%= s.branch_name %> <%= s.period %></a> — <%= s.missing_count %> missing</p><% }) %><% } %>
+  </div>
+  <div class="panel" style="grid-column:1/-1"><h2>Redemption rate — last 12 months</h2>
+    <% const maxv = Math.max(1, ...data.trend.map(function (t) { return t.redeemed + t.forfeited; })); const W = 760, H = 190, bw = W / 12; %>
+    <svg class="chart" viewBox="0 0 <%= W %> <%= H + 40 %>" role="img" aria-label="Loans redeemed and forfeited per month">
+      <% data.trend.forEach(function (t, i) { const hr = (t.redeemed / maxv) * H, hf = (t.forfeited / maxv) * H; const share = t.redeemed + t.forfeited ? Math.round(t.redeemed * 100 / (t.redeemed + t.forfeited)) + '%' : '—'; %>
+        <rect x="<%= i * bw + 10 %>" y="<%= H - hr - hf + 10 %>" width="<%= bw - 20 %>" height="<%= hf %>" fill="#c0553f"><title><%= t.month %>: <%= t.forfeited %> forfeited</title></rect>
+        <rect x="<%= i * bw + 10 %>" y="<%= H - hr + 10 %>" width="<%= bw - 20 %>" height="<%= hr %>" fill="#0f5c4d"><title><%= t.month %>: <%= t.redeemed %> redeemed</title></rect>
+        <text x="<%= i * bw + bw / 2 %>" y="<%= H + 25 %>" text-anchor="middle" font-size="11" fill="#555"><%= t.month.slice(5) %>/<%= t.month.slice(2, 4) %></text>
+        <text x="<%= i * bw + bw / 2 %>" y="<%= H + 38 %>" text-anchor="middle" font-size="10" fill="#0f5c4d"><%= share %></text>
+      <% }) %>
+    </svg>
+    <p class="small muted"><span style="color:#0f5c4d">■</span> redeemed &nbsp; <span style="color:#c0553f">■</span> forfeited — by month the loan closed; the percentage is the redeemed share.</p>
+  </div>
+</div>
+<% } %>
+
+<% if (is('admin')) { const lp = Math.min(100, Math.round(data.lent.s * 100 / Math.max(1, data.lendTarget))), cp = Math.min(100, Math.round(data.collected * 100 / Math.max(1, data.collectTarget))); %>
+<div class="grid g4">
+  <div class="stat"><div class="l">Money lent in <%= data.month %></div><div class="n"><%= K(data.lent.s) %></div><div class="meter"><span style="width:<%= lp %>%"></span></div><div class="l"><%= lp %>% of target <%= K(data.lendTarget) %> · <%= data.lent.n %> loans</div></div>
+  <div class="stat"><div class="l">Collected in <%= data.month %></div><div class="n"><%= K(data.collected) %></div><div class="meter"><span style="width:<%= cp %>%"></span></div><div class="l"><%= cp %>% of target <%= K(data.collectTarget) %></div></div>
+  <div class="stat"><div class="n"><%= data.forSale.length %></div><div class="l">Forfeited items for sale</div></div>
+  <div class="stat"><div class="n"><%= data.expiring.length %></div><div class="l">Loans expiring this week</div></div>
+</div>
+<% if (data.reversals || data.locked.length || data.amlOpen) { %><div class="alert alert-warn" style="margin-top:1rem">
+  <% if (data.reversals) { %><div><a href="/payments/reversals"><%= data.reversals %> payment reversal(s)</a> waiting for your approval.</div><% } %>
+  <% if (data.amlOpen) { %><div><a href="/aml"><%= data.amlOpen %> open AML flag(s)</a>.</div><% } %>
+  <% data.locked.forEach(function (u) { %><div>Account <strong><%= u.username %></strong> is locked — <a href="/admin/users">unlock</a>.</div><% }) %>
+</div><% } %>
+<div class="grid g2" style="margin-top:1rem">
+  <div class="panel"><h2>Forfeited items for sale</h2>
+    <% if (!data.forSale.length) { %><div class="empty">None.</div><% } else { %><table><tr><th>Loan</th><th>Item</th><th>Status</th><th class="num">Owed</th></tr>
+    <% data.forSale.forEach(function (s) { %><tr><td><a href="/loans/<%= s.loan_id %>"><%= s.loan_no %></a></td><td><%= s.item_no %> <%= s.item %></td><td><%- include('partials/badge', { s: s.status }) %></td><td class="num"><%= K(s.owing_at_forfeiture) %></td></tr><% }) %></table><p><a href="/sales">Manage sales →</a></p><% } %></div>
+  <div class="panel"><h2>Loans expiring this week</h2>
+    <% if (!data.expiring.length) { %><div class="empty">None.</div><% } else { %><table><tr><th>Loan</th><th>Expiry</th><th>Ready?</th></tr>
+    <% data.expiring.forEach(function (l) { %><tr><td><a href="/loans/<%= l.id %>"><%= l.loan_no %></a></td><td><%= fd(l.expiry_date) %></td><td><% if (l.eligible) { %><%- include('partials/badge', { s: 'ok', label: 'ready' }) %><% } else { %><span class="small"><%= l.reasons.join(' ') %></span><% } %></td></tr><% }) %></table><% } %>
+    <p><a href="/archive/expiring">Expiring loans screen →</a></p></div>
+  <div class="panel"><h2>Stock count — <%= data.month %></h2>
+    <table><tr><th>Branch</th><th>Status</th><th class="num">Missing</th></tr>
+    <% data.stock.forEach(function (b) { %><tr><td><%= b.name %></td><td><% if (b.status) { %><%- include('partials/badge', { s: b.status }) %><% } else { %><span class="badge b-pending">not started</span><% } %></td><td class="num"><%= b.missing ?? '' %></td></tr><% }) %></table></div>
+  <div class="panel"><h2>Nightly job</h2>
+    <% if (data.lastRun) { %><p>Last run for <strong><%= fd(data.lastRun.run_date) %></strong> finished <%= fts(data.lastRun.finished_at) %>.</p><p class="small muted"><%= data.lastRun.summary %></p><% } else { %><p class="empty">Not run yet.</p><% } %>
+    <p><a href="/admin/system">Nightly job & backups →</a></p></div>
+</div>
+<% } %>
+<%- include('partials/footer') %>

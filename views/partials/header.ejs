@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title %> · <%= lender %></title>
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body data-idle="<%= idleMinutes %>" data-auth="<%= user ? 1 : 0 %>">
+<% if (user) { %>
+<header class="top">
+  <a class="brand" href="/"><%= lender %><small>Loan Management System</small></a>
+  <form class="lookup" action="/lookup" method="get"><input name="q" placeholder="Scan tag / ticket, or search…" aria-label="Scan or search"></form>
+  <span class="spacer"></span>
+  <a class="bell" href="/notifications">Notifications<% if (unread) { %><b><%= unread %></b><% } %></a>
+  <span class="who"><%= user.full_name %> · <%= ROLE_LABEL[user.role] %> · <%= fd(today) %> PGT</span>
+  <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn small secondary" style="background:transparent;color:#fff;border-color:#fff">Sign out</button></form>
+</header>
+<div class="shell">
+<nav class="side">
+  <% const L = (href, label) => `<a href="${href}" class="${(href === '/' ? path === '/' : path.startsWith(href)) ? 'on' : ''}">${label}</a>`; %>
+  <%- L('/', 'Dashboard') %>
+  <h4>Counter</h4>
+  <%- L('/customers', 'Customers') %>
+  <%- L('/loans', 'Loans') %>
+  <% if (is('loan_officer')) { %><%- L('/loans/redeem', 'Redeem (scan ticket)') %><% } %>
+  <%- L('/items', 'Item store') %>
+  <% if (is('loan_officer', 'admin')) { %><%- L('/payments/unmatched', 'Payments to match') %><% } %>
+  <%- L('/payments/refunds', 'Refunds & surplus') %>
+  <%- L('/payments/reversals', 'Reversals') %>
+  <%- L('/tasks', 'Call tasks') %>
+  <h4>Custody</h4>
+  <%- L('/stock', 'Stock counts') %>
+  <%- L('/stock/access', 'Store access log') %>
+  <%- L('/sales', 'Forfeited items / sales') %>
+  <% if (is('admin', 'cro')) { %>
+  <h4>Archive</h4>
+  <%- L('/archive', 'Archive search') %>
+  <%- L('/archive/expiring', 'Expiring loans') %>
+  <%- L('/archive/deleted', 'Deletion log') %>
+  <% } %>
+  <h4>Oversight</h4>
+  <%- L('/reports', 'Reports') %>
+  <% if (is('admin', 'cro')) { %><%- L('/aml', 'AML flags') %><%- L('/admin/audit', 'Audit log') %><%- L('/admin/watchlists', 'Flagged items & sanctions') %><% } %>
+  <% if (is('admin')) { %>
+  <h4>Admin</h4>
+  <%- L('/admin/users', 'Users') %>
+  <%- L('/admin/branches', 'Branches') %>
+  <%- L('/admin/settings', 'Settings & rates') %>
+  <%- L('/admin/lists', 'ID types & brands') %>
+  <%- L('/admin/system', 'Nightly job & backups') %>
+  <%- L('/admin/sms', 'SMS outbox') %>
+  <% } %>
+  <h4>Account</h4>
+  <%- L('/account/password', 'Change password') %>
+</nav>
+<main>
+<% } else { %>
+<main class="login">
+<% } %>
+<%- include('flash') %>

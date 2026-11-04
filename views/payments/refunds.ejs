@@ -1,0 +1,9 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Refunds and surplus owed</h1><div class="muted">Overpayments are refunded in cash or by transfer to the customer's bank account. Sale surplus over the amount owing is listed as owed to the pledger until paid (s.19 Pawnbrokers Act 1951).</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>Loan</th><th>Customer</th><th>Kind</th><th class="num">Amount</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="7" class="empty">Nothing owed.</td></tr><% } %>
+<% list.forEach(function (r) { const late = r.status === 'owed' && r.due_date && r.due_date < today; %><tr><td><a href="/loans/<%= r.loan_id %>"><%= r.loan_no %></a></td><td><%= r.customer_name %><div class="small muted"><%= r.bank_name || '' %></div></td><td><%= r.kind === 'surplus' ? 'Sale surplus' : 'Overpayment' %></td><td class="num"><%= K(r.amount) %></td>
+<td style="<%= late ? 'color:var(--bad);font-weight:600' : '' %>"><%= fd(r.due_date) || '—' %><%= late ? ' OVERDUE' : '' %></td><td><%- include('../partials/badge', { s: r.status }) %><% if (r.paid_at) { %><div class="small"><%= fts(r.paid_at) %> <%= r.channel %> <%= r.reference || '' %></div><% } %></td>
+<td><% if (r.status === 'owed' && is('loan_officer', 'admin')) { %><form method="post" action="/payments/refunds/<%= r.id %>/pay" class="inline"><%- include('../partials/csrf') %><select name="channel"><option value="cash">Cash</option><option value="bank">Bank transfer</option><option value="mobile">Mobile transfer</option></select> <input name="reference" placeholder="Ref." style="width:7rem"> <button class="btn small">Record paid</button></form><% } %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

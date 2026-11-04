@@ -1,0 +1,17 @@
+<% if (!rows || !rows.length) { %><div class="empty">None.</div><% } else { %>
+<div class="tablewrap"><table>
+<thead><tr><th>Loan</th><th>Customer</th><th>Status</th><% if (typeof cols !== 'undefined' && cols.includes('maturity')) { %><th>Maturity</th><% } %><% if (typeof cols !== 'undefined' && cols.includes('grace')) { %><th>Grace end</th><% } %><th class="num">Amount</th><th class="num">Owing</th></tr></thead>
+<tbody>
+<% rows.forEach(function (l) { %>
+<tr>
+  <td><a href="/loans/<%= l.id %>"><%= l.loan_no %></a></td>
+  <td><%= l.customer_name %><div class="small muted"><%= l.customer_no %></div></td>
+  <td><%- include('badge', { s: l.status }) %></td>
+  <% if (typeof cols !== 'undefined' && cols.includes('maturity')) { %><td><%= fd(l.maturity_date) %></td><% } %>
+  <% if (typeof cols !== 'undefined' && cols.includes('grace')) { %><td><%= fd(l.grace_end_date) %></td><% } %>
+  <td class="num"><%= K(l.amount_released || l.approved_amount || l.requested_amount) %></td>
+  <td class="num"><%= l.release_date ? K(l.owing) : '' %></td>
+</tr>
+<% }) %>
+</tbody></table></div>
+<% } %>

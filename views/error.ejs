@@ -1,0 +1,8 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <h1><%= title %></h1>
+  <p><%= message %></p>
+  <% if (details && details.length) { %><ul><% details.forEach(function (d) { %><li><%= d %></li><% }) %></ul><% } %>
+  <p><a href="/" class="btn">Dashboard</a></p>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,96 @@
+<%- include('../partials/header') %>
+<% const isNew = !c.id; const v = function (k) { return val(k, c[k] == null ? '' : (k === 'dob' ? fd(c[k]) : k === 'usual_income' && c[k] ? (c[k] / 100).toFixed(2) : c[k])); };
+   const sel = function (k, opt) { return String(v(k)) === String(opt) ? 'selected' : ''; }; %>
+<div class="pagehead"><div><h1><%= isNew ? 'Register customer' : 'Edit ' + c.customer_no %></h1>
+<div class="muted">Fields marked <span style="color:var(--bad)">*</span> are required. Income is recorded but not required, because the item secures the loan.</div></div></div>
+<form method="post" action="<%= isNew ? '/customers' : '/customers/' + c.id %>?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
+<fieldset><legend>Identity</legend>
+  <div class="row">
+    <div><label>Surname <span class="req">*</span></label><input name="surname" value="<%= v('surname') %>" required></div>
+    <div><label>Given names <span class="req">*</span></label><input name="given_names" value="<%= v('given_names') %>" required></div>
+    <div><label>Date of birth (DD/MM/YYYY) <span class="req">*</span></label><input name="dob" value="<%= v('dob') %>" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" required></div>
+    <div><label>Sex <span class="req">*</span></label><select name="sex" required><option value=""></option><% ['Female','Male'].forEach(function (o) { %><option <%= sel('sex', o) %>><%= o %></option><% }) %></select></div>
+    <div><label>Marital status <span class="req">*</span></label><select name="marital_status" required><option value=""></option><% ['Single','Married','Customary marriage','Widowed','Separated','Divorced'].forEach(function (o) { %><option <%= sel('marital_status', o) %>><%= o %></option><% }) %></select></div>
+    <div><label>Citizenship <span class="req">*</span></label><input name="citizenship" value="<%= v('citizenship') || 'Papua New Guinean' %>" required></div>
+  </div>
+</fieldset>
+<fieldset><legend>Place of origin</legend>
+  <div class="row">
+    <div><label>Home province <span class="req">*</span></label><select name="home_province" required><option value=""></option><% PROVINCES.forEach(function (p) { %><option <%= sel('home_province', p) %>><%= p %></option><% }) %></select></div>
+    <div><label>District <span class="req">*</span></label><input name="home_district" value="<%= v('home_district') %>" required></div>
+    <div><label>Village <span class="req">*</span></label><input name="home_village" value="<%= v('home_village') %>" required></div>
+  </div>
+</fieldset>
+<fieldset><legend>Contact</legend>
+  <div class="row">
+    <div><label>Mobile number <span class="req">*</span></label><input name="mobile" value="<%= v('mobile') %>" placeholder="7xxx xxxx" required><div class="hint">Confirmed by SMS code after saving.</div></div>
+    <div><label>Network <span class="req">*</span></label><select name="mobile_network" required><option value=""></option><% ['Digicel','Vodafone/bmobile'].forEach(function (o) { %><option <%= sel('mobile_network', o) %>><%= o %></option><% }) %></select></div>
+    <div><label>Second number</label><input name="second_phone" value="<%= v('second_phone') %>"></div>
+    <div><label>Email</label><input name="email" type="email" value="<%= v('email') %>"></div>
+    <div><label>SMS language</label><select name="sms_language"><option value="en" <%= sel('sms_language', 'en') %>>English</option><option value="tpi" <%= sel('sms_language', 'tpi') %>>Tok Pisin</option></select></div>
+  </div>
+</fieldset>
+<fieldset><legend>Current address</legend>
+  <div class="row">
+    <div><label>Province <span class="req">*</span></label><select name="addr_province" required><option value=""></option><% PROVINCES.forEach(function (p) { %><option <%= sel('addr_province', p) %>><%= p %></option><% }) %></select></div>
+    <div><label>District <span class="req">*</span></label><input name="addr_district" value="<%= v('addr_district') %>" required></div>
+    <div><label>Town or suburb <span class="req">*</span></label><input name="addr_town" value="<%= v('addr_town') %>" required></div>
+    <div><label>Section and lot (or settlement / village) <span class="req">*</span></label><input name="addr_section_lot" value="<%= v('addr_section_lot') %>" required></div>
+    <div><label>Nearest landmark <span class="req">*</span></label><input name="addr_landmark" value="<%= v('addr_landmark') %>" required></div>
+    <div><label>PO Box</label><input name="po_box" value="<%= v('po_box') %>"></div>
+  </div>
+  <div class="row">
+    <div><label>Residence proof <span class="req">*</span></label><select name="residence_proof_type" required><option value=""></option><% RESIDENCE.forEach(function (p) { %><option <%= sel('residence_proof_type', p) %>><%= p %></option><% }) %></select></div>
+    <div><label>Scan of residence proof <%- isNew ? '<span class="req">*</span>' : '' %></label><input type="file" name="residence" accept="image/*,application/pdf"></div>
+  </div>
+</fieldset>
+<fieldset><legend>Work or income (optional)</legend>
+  <div class="row">
+    <div><label>Employer or business name</label><input name="employer" value="<%= v('employer') %>"></div>
+    <div><label>Occupation</label><input name="occupation" value="<%= v('occupation') %>"></div>
+    <div><label>Usual income per fortnight (K)</label><input name="usual_income" value="<%= v('usual_income') %>" inputmode="decimal"></div>
+  </div>
+</fieldset>
+<fieldset><legend>Bank and mobile banking (optional — for refunds and auction surplus)</legend>
+  <div class="row">
+    <div><label>Bank</label><select name="bank_name"><option value=""></option><% ['BSP','Kina Bank','Westpac','ANZ','TISA Bank','Nationwide Microbank','MiBank','Credit union'].forEach(function (o) { %><option <%= sel('bank_name', o) %>><%= o %></option><% }) %></select></div>
+    <div><label>Account number</label><input name="bank_account" autocomplete="off" placeholder="<%= isNew ? '' : 'Leave blank to keep the saved number' %>"><div class="hint">Stored encrypted.</div></div>
+    <div><label>Mobile banking number</label><input name="mobile_banking" autocomplete="off" placeholder="<%= isNew ? '' : 'Leave blank to keep' %>"></div>
+  </div>
+</fieldset>
+<fieldset><legend>Next of kin</legend>
+  <div class="row">
+    <div><label>Name <span class="req">*</span></label><input name="nok_name" value="<%= v('nok_name') %>" required></div>
+    <div><label>Relationship <span class="req">*</span></label><input name="nok_relationship" value="<%= v('nok_relationship') %>" required></div>
+    <div><label>Phone <span class="req">*</span></label><input name="nok_phone" value="<%= v('nok_phone') %>" required></div>
+    <div><label>Village or address <span class="req">*</span></label><input name="nok_address" value="<%= v('nok_address') %>" required></div>
+  </div>
+</fieldset>
+<fieldset><legend>Photo and signature</legend>
+  <div class="capture">
+    <div data-camera="photo_data">
+      <label>Live photo taken at the branch <%- isNew ? '<span class="req">*</span>' : '' %></label>
+      <video autoplay playsinline muted></video><canvas class="preview" style="display:none"></canvas>
+      <div class="actions"><button type="button" class="btn small secondary" data-start>Start camera</button><button type="button" class="btn small" data-snap disabled>Take photo</button> <span class="small" data-status></span></div>
+      <input type="hidden" name="photo_data" id="photo_data">
+      <div class="hint">No camera? Upload a photo taken now: <input type="file" name="photo" accept="image/*" capture="user"></div>
+    </div>
+    <div style="flex:1;min-width:260px">
+      <label>Specimen signature <%- isNew ? '<span class="req">*</span>' : '' %></label>
+      <canvas class="sig" data-field="signature_data"></canvas><input type="hidden" name="signature_data" id="signature_data">
+      <div class="actions"><button type="button" class="btn small secondary" data-clear="signature_data">Clear</button></div>
+      <div class="hint">Or, if the customer cannot sign, upload a thumbprint: <input type="file" name="thumbprint" accept="image/*"></div>
+    </div>
+  </div>
+</fieldset>
+<% if (isNew) { %>
+<fieldset><legend>Consents (each is dated today)</legend>
+  <label class="check"><input type="checkbox" name="consent_terms" value="1" <%= oldHas('consent_terms') ? 'checked' : '' %> required> The customer consents to the loan terms.</label>
+  <label class="check"><input type="checkbox" name="consent_data" value="1" <%= oldHas('consent_data') ? 'checked' : '' %> required> The customer consents to the collection and use of their data (only what is needed; they may see their own data; deleted on schedule).</label>
+  <label class="check"><input type="checkbox" name="consent_forfeit" value="1" <%= oldHas('consent_forfeit') ? 'checked' : '' %> required> The customer consents to forfeiture and sale of the item if the loan is not paid.</label>
+</fieldset>
+<% } %>
+<div class="actions"><button class="btn"><%= isNew ? 'Register customer' : 'Save profile' %></button><a href="<%= isNew ? '/customers' : '/customers/' + c.id %>">Cancel</a></div>
+<p class="hint">The system checks for duplicates (same ID number, mobile, or name and date of birth) and against the sanctions list.</p>
+</form>
+<%- include('../partials/footer') %>

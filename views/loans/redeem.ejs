@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Redeem — scan the pledge ticket</h1></div>
+<form class="panel f" method="get" style="display:flex;gap:.5rem;align-items:end">
+  <div style="flex:1"><label>Ticket barcode / contract number</label><input name="ticket" value="<%= query.ticket || '' %>" data-scan autocomplete="off"></div><button class="btn">Look up</button>
+</form>
+<% if (notFound) { %><div class="alert alert-error">No active loan with that ticket number.</div><% } %>
+<% if (loan) { %>
+<div class="panel">
+  <h2 style="margin-top:0">Loan <a href="/loans/<%= loan.id %>"><%= loan.loan_no %></a> — <%= c.given_names %> <%= c.surname %> <%- include('../partials/badge', { s: loan.status }) %></h2>
+  <% if (ticket && ticket.status === 'cancelled') { %><div class="alert alert-error">This ticket was cancelled.</div><% } %>
+  <% if (ticket && ticket.status === 'expired') { %><div class="alert alert-warn">Ticket EXPIRED — not redeemed by the redemption date <%= fd(loan.maturity_date) %>.</div><% } %>
+  <% if (['active','in_grace','paid'].includes(loan.status)) { const now = loan.principal_owing + loan.interest_owing + loan.fees_owing; %>
+  <p>Amount to collect the item today</p><div class="balance"><%= K(now) %></div>
+  <p class="small muted">A lesser amount is payable when redeeming before the redemption date. Payment: cash, bank deposit or mobile banking transfer (no cheques or credit cards unless agreed). Several items on one ticket are redeemed together.</p>
+  <div class="actions"><a class="btn" href="/loans/<%= loan.id %>"><%= loan.status === 'paid' ? 'Return item' : 'Take payment' %></a></div>
+  <% } else { %><p>This loan is <%= STATUS[loan.status] %>; it cannot be redeemed.</p><% } %>
+</div>
+<% } %>
+<%- include('../partials/footer') %>

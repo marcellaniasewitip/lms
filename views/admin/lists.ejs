@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Accepted IDs and approved brands</h1></div>
+<div class="panel"><h2 style="margin-top:0">Accepted ID types</h2>
+<table><tr><th>ID type</th><th>Issued by</th><th>Photo</th><th>Use</th><th>Status</th><th></th></tr>
+<% idTypes.forEach(function (t) { %><tr><td><%= t.name %></td><td><%= t.issued_by %></td><td><%= t.photo %></td><td><%= t.use.replace('_', ' ') %></td><td><%= t.active ? 'accepted' : 'removed' %></td>
+<td><form method="post" action="/admin/id-types" class="inline"><%- include('../partials/csrf') %><input type="hidden" name="id" value="<%= t.id %>"><input type="hidden" name="active" value="<%= t.active ? 0 : 1 %>"><button class="btn small secondary"><%= t.active ? 'Remove' : 'Restore' %></button></form></td></tr><% }) %></table>
+<form method="post" action="/admin/id-types" class="f"><%- include('../partials/csrf') %><div class="row"><div><label>ID type</label><input name="name" required></div><div><label>Issued by</label><input name="issued_by" required></div>
+<div><label>Photo</label><select name="photo"><option value="yes">Yes</option><option value="no">No</option><option value="varies">Varies</option></select></div><div><label>Use</label><select name="use"><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="secondary_only">Secondary only</option></select></div></div>
+<div class="actions"><button class="btn small">Add ID type</button></div></form></div>
+<div class="panel" id="brands"><h2 style="margin-top:0">Approved brands</h2><p class="small muted">Only cars, laptops and phones of these brands are accepted. Set a minimum model year (or model) per brand.</p>
+<table><tr><th>Category</th><th>Brand</th><th>Minimum year / model</th><th>Status</th><th></th></tr>
+<% brands.forEach(function (b) { %><tr><td><%= b.category %></td><td><%= b.name %></td>
+<td><form method="post" action="/admin/brands" class="inline"><%- include('../partials/csrf') %><input type="hidden" name="id" value="<%= b.id %>"><input type="hidden" name="active" value="<%= b.active %>"><input name="min_model_year" value="<%= b.min_model_year || '' %>" style="width:5rem"> <input name="min_model" value="<%= b.min_model || '' %>" placeholder="min model" style="width:8rem"> <button class="btn small secondary">Save</button></form></td>
+<td><%= b.active ? 'approved' : 'removed' %></td><td><form method="post" action="/admin/brands" class="inline"><%- include('../partials/csrf') %><input type="hidden" name="id" value="<%= b.id %>"><input type="hidden" name="min_model_year" value="<%= b.min_model_year || '' %>"><input type="hidden" name="active" value="<%= b.active ? 0 : 1 %>"><button class="btn small secondary"><%= b.active ? 'Remove' : 'Restore' %></button></form></td></tr><% }) %></table>
+<form method="post" action="/admin/brands" class="f"><%- include('../partials/csrf') %><div class="row"><div><label>Category</label><select name="category"><option value="car">Car / ute / truck</option><option value="laptop">Laptop</option><option value="phone">Phone</option></select></div><div><label>Brand</label><input name="name" required></div><div><label>Minimum model year</label><input name="min_model_year"></div></div><div class="actions"><button class="btn small">Add brand</button></div></form></div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,29 @@
+{
+  "name": "png-loan-management-system",
+  "version": "1.0.0",
+  "description": "Loan Management System — short-term item-secured loans, Papua New Guinea",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/server.js",
+    "seed": "node scripts/seed.js",
+    "nightly": "node scripts/nightly.js",
+    "backup": "node scripts/backup.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "bwip-js": "^4.11.4",
+    "ejs": "^7.0.2",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.5.0",
+    "node-cron": "^4.6.0",
+    "pdfkit": "^0.20.2"
+  }
+}

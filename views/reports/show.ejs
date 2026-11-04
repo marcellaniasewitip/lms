@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<% const qs = new URLSearchParams(Object.entries(query).filter(function ([k]) { return k !== 'format'; })).toString(); %>
+<div class="pagehead"><div><h1><%= rep.title %></h1><div class="muted"><%= def.desc %> <%= rep.scopeNote %></div></div>
+<div class="actions" style="margin:0"><a class="btn secondary" href="/reports/<%= key %>?<%= qs %>&format=xlsx">Excel</a><a class="btn secondary" href="/reports/<%= key %>?<%= qs %>&format=pdf">PDF</a></div></div>
+<form class="panel f noprint" method="get"><div class="row">
+  <% if (key === 'daily') { %><div><label>Day</label><input name="date" value="<%= query.date || fd(today) %>"></div><% } %>
+  <% if (['forfeitures','expiry','aml'].includes(key)) { %><div><label>From</label><input name="from" value="<%= query.from || fd(dates.addDays(today, -30)) %>"></div><div><label>To</label><input name="to" value="<%= query.to || fd(today) %>"></div><% } %>
+  <% if (key === 'customer') { %><div><label>Customer</label><select name="customer_id"><option value=""></option><% custs.forEach(function (c) { %><option value="<%= c.id %>" <%= String(query.customer_id) === String(c.id) ? 'selected' : '' %>><%= c.name %> (<%= c.customer_no %>)</option><% }) %></select></div><% } %>
+  <% if (key === 'stock') { %><div><label>Category</label><select name="category"><option value="">All</option><option value="car">Cars</option><option value="laptop">Laptops</option><option value="phone">Phones</option></select></div><% } %>
+  <% if (key !== 'customer' && !is('loan_officer')) { %><div><label>Branch</label><select name="branch_id"><option value="">All branches</option><% branches.forEach(function (b) { %><option value="<%= b.id %>" <%= String(query.branch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option><% }) %></select></div><% } %>
+</div><div class="actions"><button class="btn">Run report</button></div></form>
+<% if (rep.needsCustomer) { %><div class="panel empty">Choose a customer.</div><% } %>
+<% rep.sections.forEach(function (s) { %>
+<h2><%= s.title %></h2>
+<div class="tablewrap"><table><thead><tr><% s.columns.forEach(function (c) { %><th class="<%= c.type === 'money' ? 'num' : '' %>"><%= c.label %></th><% }) %></tr></thead><tbody>
+<% if (!s.rows.length) { %><tr><td colspan="<%= s.columns.length %>" class="empty">None.</td></tr><% } %>
+<% s.rows.forEach(function (r) { %><tr><% s.columns.forEach(function (c) { const v = r[c.key]; %><td class="<%= c.type === 'money' ? 'num' : '' %>"><%= v === null || v === undefined ? '' : c.type === 'money' ? K(v) : c.type === 'date' ? fd(v) : v %></td><% }) %></tr><% }) %>
+</tbody></table></div>
+<% }) %>
+<%- include('../partials/footer') %>

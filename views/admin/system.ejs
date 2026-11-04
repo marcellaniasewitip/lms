@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Nightly job and backups</h1><div class="muted">The nightly run starts at midnight Port Moresby time. It adds weekly interest, sends reminders, moves loans into grace, flags forfeitures, expires tickets, pulls expired loans out to the archive, deletes records past retention and takes an encrypted backup. Missed nights are caught up automatically.</div></div>
+<form method="post" action="/admin/system/nightly"><%- include('../partials/csrf') %><button class="btn">Run now</button></form></div>
+<div class="panel"><h2 style="margin-top:0">Runs</h2><table><tr><th>Business date</th><th>Started</th><th>Finished</th><th>Summary</th><th>By</th></tr>
+<% runs.forEach(function (r) { %><tr><td><%= fd(r.run_date) %></td><td><%= fts(r.started_at) %></td><td><%= fts(r.finished_at) %></td><td class="small"><%= r.summary %></td><td><%= r.triggered_by ? 'Admin' : 'schedule' %></td></tr><% }) %></table></div>
+<div class="panel"><div class="pagehead" style="margin:0"><h2 style="margin:0">Encrypted backups</h2><div class="actions" style="margin:0">
+<form method="post" action="/admin/system/backup"><%- include('../partials/csrf') %><button class="btn secondary small">Back up now</button></form>
+<form method="post" action="/admin/system/restore-test"><%- include('../partials/csrf') %><button class="btn secondary small">Test restore (latest)</button></form></div></div>
+<p class="small muted">Each backup is encrypted (AES-256-GCM) and written to two locations. Test a restore every quarter.</p>
+<table><tr><th>File</th><th>Created</th><th class="num">Size</th><th>Copies</th><th>Restore test</th></tr>
+<% backups.forEach(function (b) { %><tr><td class="mono small"><%= b.file %></td><td><%= fts(b.created_at) %></td><td class="num"><%= Math.round(b.size / 1024) %> KB</td><td class="small"><%= JSON.parse(b.copies || '[]').length %> locations</td><td class="small"><%= b.verify_result ? fts(b.verified_at) + ' — ' + b.verify_result : '' %></td></tr><% }) %></table></div>
+<%- include('../partials/footer') %>

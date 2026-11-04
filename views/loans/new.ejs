@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>New loan application</h1><div class="muted">For <a href="/customers/<%= c.id %>"><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</a></div></div></div>
+<% if (!readiness.ok) { %><div class="alert alert-error"><strong>A loan cannot be created yet.</strong><ul><% readiness.reasons.forEach(function (r) { %><li><%= r %></li><% }) %></ul></div><% } %>
+<form method="post" action="/loans" class="f panel">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="customer_id" value="<%= c.id %>">
+  <h2 style="margin-top:0">Items securing the loan</h2>
+  <% if (!available.length) { %><div class="empty">No items in the store for this customer. <a href="/customers/<%= c.id %>/items/new">Receive an item</a> first.</div><% } %>
+  <% available.forEach(function (i) { %><label class="check"><input type="checkbox" name="item_ids" value="<%= i.id %>" <%= oldHas('item_ids', String(i.id), available.length === 1) ? 'checked' : '' %>> <span><strong><%= i.item_no %></strong> — <%= i.brand_name %> <%= i.model %> <%= i.year || '' %> <span class="muted">(<%= i.category %>, <%= i.location %>)</span></span></label><% }) %>
+  <p class="hint">Several items on one loan are graded separately; the loan limit is the sum of their allowed amounts and they can only be redeemed together.</p>
+  <div class="row"><div><label>Amount the customer asks for (K) <span class="req">*</span></label><input name="requested_amount" value="<%= val('requested_amount') %>" inputmode="decimal" required><div class="hint">At least K20.00. The CRO sets the loan at or below the grade's share of the assessed value.</div></div></div>
+  <div class="actions"><button class="btn" name="submit_now" value="1" <%= readiness.ok ? '' : 'disabled' %>>Create and send to the CRO</button><button class="btn secondary" <%= readiness.ok ? '' : 'disabled' %>>Save as draft</button></div>
+</form>
+<%- include('../partials/footer') %>

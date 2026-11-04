@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<% const shares = {}; grades.forEach(function (g) { shares[g.grade] = g.accepted ? g.share_pct : 0; }); %>
+<div class="pagehead"><div><h1>Inspect and value <%= li.item_no %></h1>
+<div class="muted">Loan <a href="/loans/<%= l.id %>"><%= l.loan_no %></a> · <%= li.brand_name %> <%= li.model %> <%= li.year || '' %> · <%= cat.label %></div></div></div>
+<div class="grid g2">
+<div class="panel"><h2 style="margin-top:0">Item at intake</h2>
+  <div class="photos"><% photos.forEach(function (p) { %><a href="/files/<%= p.id %>"><% if (p.mime.startsWith('image/')) { %><img src="/files/<%= p.id %>" alt="<%= p.kind %>"><% } else { %><span class="badge"><%= p.kind %></span><% } %></a><% }) %></div>
+  <dl class="kv small" style="margin-top:.6rem">
+    <% if (li.category === 'car') { %><dt>VIN / plate</dt><dd><%= li.vin %> / <%= li.plate %></dd><dt>Odometer</dt><dd><%= Number(li.mileage_intake).toLocaleString() %> km</dd><% } else { %><dt>Specs</dt><dd><%= li.storage %> / <%= li.ram %> <%= li.processor || '' %></dd><dt><%= li.imei ? 'IMEI' : 'Serial' %></dt><dd><%= li.imei || li.serial_no %></dd><% } %>
+    <dt>Faults noted at intake</dt><dd><%= li.faults || 'None' %></dd>
+    <dt>Ownership</dt><dd><%= li.ownership_doc_type %> — owner <strong><%= li.owner_name %></strong>; customer <strong><%= c.given_names %> <%= c.surname %></strong> <%- include('../partials/badge', { s: ownerCheck }) %></dd>
+  </dl>
+  <h3>Grades</h3>
+  <table><tr><th>Grade</th><th>Condition</th><th class="num">Share</th><th>Weekly rate</th></tr>
+  <% grades.forEach(function (g) { %><tr><td><strong><%= g.grade %></strong></td><td class="small"><%= g.description %></td><td class="num"><%= g.accepted ? 'Up to ' + g.share_pct + '%' : 'Not accepted' %></td><td><%= g.accepted ? g.rate_min + '% to ' + g.rate_max + '%' : '—' %></td></tr><% }) %></table>
+</div>
+<form class="panel f" method="post" action="/loans/<%= l.id %>/value/<%= li.item_id %>?_csrf=<%= csrf %>" enctype="multipart/form-data" data-valuation='<%= JSON.stringify(shares) %>'>
+  <h2 style="margin-top:0">Checklist — <%= cat.label %></h2>
+  <p class="small muted">Tick every line. Every fault found is described and photographed, so the condition at intake is on record.</p>
+  <table><tr><th>Check</th><th>OK</th><th>Fault</th><th>Fault found</th></tr>
+  <% cat.inspection.forEach(function (ch, n) { const p = prior && prior[ch]; const cur = val('check_' + n, p ? p.result : ''); %>
+  <tr><td><%= ch %></td><td><input type="radio" name="check_<%= n %>" value="ok" <%= cur === 'ok' ? 'checked' : '' %> aria-label="<%= ch %> OK"></td><td><input type="radio" name="check_<%= n %>" value="fault" <%= cur === 'fault' ? 'checked' : '' %> aria-label="<%= ch %> fault"></td><td><input name="note_<%= n %>" value="<%= val('note_' + n, p ? p.note : '') %>"></td></tr>
+  <% }) %></table>
+  <label>Fault photos</label><input type="file" name="fault_photos" accept="image/*" multiple>
+  <h3>Grade</h3>
+  <div class="checks"><% grades.forEach(function (g) { %><label class="check"><input type="radio" name="grade" value="<%= g.grade %>" <%= val('grade', li.grade) === g.grade ? 'checked' : '' %>> <strong><%= g.grade %></strong> <span class="small"><%= g.accepted ? g.share_pct + '%, ' + g.rate_min + '–' + g.rate_max + '%' : 'not accepted' %></span></label><% }) %></div>
+  <div class="row">
+    <div><label>Resale (market) value for this brand, model and age (K)</label><input name="market_value" value="<%= val('market_value', li.market_value ? (li.market_value / 100).toFixed(2) : '') %>" required></div>
+    <div><label>Cost of fixing faults found (K)</label><input name="repair_cost" value="<%= val('repair_cost', li.repair_cost ? (li.repair_cost / 100).toFixed(2) : '0') %>"></div>
+  </div>
+  <div class="alert alert-info small" data-out></div>
+  <h3>Proof of ownership</h3>
+  <label class="check"><input type="checkbox" name="ownership_verified" value="1" <%= li.ownership_verified ? 'checked' : '' %>> I have checked the proof of ownership: the owner named matches the customer's IDs<%= li.category === 'car' ? ', registration is current, VIN and plate match and no other lender has a claim' : li.category === 'phone' ? ', the IMEI matches and the phone is not reported lost or stolen' : '' %>. Doubtful items are checked with police.</label>
+  <label>Ownership note <%= ownerCheck !== 'match' ? '(required: the owner name differs from the IDs)' : '' %></label><input name="ownership_note" value="<%= val('ownership_note', li.ownership_note || '') %>">
+  <div class="actions"><button class="btn">Save valuation</button><a href="/loans/<%= l.id %>">Back to loan</a></div>
+</form>
+</div>
+<%- include('../partials/footer') %>

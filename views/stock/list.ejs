@@ -1,0 +1,7 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Monthly stock counts</h1><div class="muted">Loan Officers count every item each month; the CRO signs off; the Admin reviews. Any missing item is reported to the Admin at once.</div></div>
+<% if (is('loan_officer')) { %><form method="post" action="/stock"><%- include('../partials/csrf') %><button class="btn">Start / continue this month's count</button></form><% } %></div>
+<table><tr><th>Period</th><th>Branch</th><th>Status</th><th class="num">Missing</th><th>Submitted</th><th>CRO signed</th><th>Admin reviewed</th></tr>
+<% if (!list.length) { %><tr><td colspan="7" class="empty">No counts yet.</td></tr><% } %>
+<% list.forEach(function (s) { %><tr><td><a href="/stock/<%= s.id %>"><%= s.period %></a></td><td><%= s.branch_name %></td><td><%- include('../partials/badge', { s: s.status }) %></td><td class="num" style="<%= s.missing_count ? 'color:var(--bad);font-weight:700' : '' %>"><%= s.missing_count %></td><td><%= fts(s.submitted_at) %></td><td><%= fts(s.signed_at) %></td><td><%= fts(s.reviewed_at) %></td></tr><% }) %></table>
+<%- include('../partials/footer') %>

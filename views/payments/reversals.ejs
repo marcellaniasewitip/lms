@@ -1,0 +1,9 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Payment reversals</h1><div class="muted">A wrong posting is reversed by a new entry, never deleted. The Loan Officer requests; the Admin approves.</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>Requested</th><th>Loan</th><th>Receipt</th><th class="num">Amount</th><th>Reason</th><th>By</th><th>Status</th><th></th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="8" class="empty">No reversal requests.</td></tr><% } %>
+<% list.forEach(function (r) { %><tr><td><%= fts(r.requested_at) %></td><td><a href="/loans/<%= r.loan_id %>"><%= r.loan_no %></a></td><td><%= r.receipt_no %> (<%= fd(r.date_received) %>)</td><td class="num"><%= K(r.amount) %></td><td><%= r.reason %></td><td><%= r.requested_by_name %></td>
+<td><%- include('../partials/badge', { s: r.status }) %><% if (r.decided_by_name) { %><div class="small"><%= r.decided_by_name %> <%= fts(r.decided_at) %><%= r.decision_note ? ': ' + r.decision_note : '' %></div><% } %></td>
+<td><% if (is('admin') && r.status === 'pending') { %><form method="post" action="/payments/reversals/<%= r.id %>" class="inline"><%- include('../partials/csrf') %><input name="note" placeholder="Note" style="width:8rem"> <button class="btn small" name="approve" value="1">Approve</button> <button class="btn small danger" name="approve" value="0">Reject</button></form><% } %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title><%= title %></title><link rel="stylesheet" href="/static/css/app.css">
+<style>body{background:#fff}.r{max-width:640px;margin:1rem auto;border:1px solid #000;padding:14px 18px;font-size:13px}.r h1{font-size:18px;margin:0}</style></head><body>
+<div class="r">
+  <h1><%= lender %> — Release slip</h1><div><%= branch.name %> · <%= branch.physical_address %></div><hr>
+  <p>Loan <strong><%= l.loan_no %></strong> · <%= STATUS[l.status] %> · closed <%= fd(l.date_closed) %></p>
+  <p>Customer: <strong><%= c.given_names %> <%= c.surname %></strong> (<%= c.customer_no %>)</p>
+  <table><tr><th>Item</th><th>Description</th><th>Collected by</th><th>ID shown</th><th>When</th></tr>
+  <% lis.forEach(function (i) { %><tr><td><%= i.item_no %></td><td><%= i.brand_name %> <%= i.model %> <%= i.category === 'car' ? '(' + i.plate + ', odometer ' + (i.return_mileage || '') + ' km)' : '' %></td><td><%= i.returned_to %></td><td><%= i.return_id_shown %></td><td><%= fts(i.returned_at) %></td></tr><% }) %></table>
+  <p>The person named above checked the item(s) against the intake photos and received them in the condition recorded. <%= l.status === 'redeemed' ? 'The loan balance is K0.00.' : 'The application did not proceed and no money was advanced.' %></p>
+  <% if (sig) { %><p>Signature:<br><img src="/files/<%= sig.id %>" alt="signature" style="height:80px;border-bottom:1px solid #000"></p><% } %>
+</div>
+<p class="noprint" style="text-align:center"><button class="btn" data-print>Print slip</button> <a href="/loans/<%= l.id %>">Back to loan</a></p>
+<script src="/static/js/app.js"></script>
+</body></html>

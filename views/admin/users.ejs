@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Users</h1><div class="muted">Each user has exactly one role. The Admin and the CRO should be different people. No one can approve a loan they created.</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Branch</th><th>Mobile (SMS code)</th><th>Status</th><th>Last sign-in</th><th>Change</th></tr></thead><tbody>
+<% list.forEach(function (u) { %><tr><td><strong><%= u.username %></strong><br><%= u.full_name %></td><td><%= ROLE_LABEL[u.role] %></td><td><%= u.branch_name || 'All' %></td><td><%= u.mobile %></td>
+<td><% if (u.locked) { %><span class="badge b-rejected">locked</span><% } else if (!u.active) { %><span class="badge">inactive</span><% } else { %><span class="badge b-active">active</span><% } %><%= u.must_change_pw ? ' · must change password' : '' %></td><td class="small"><%= fts(u.last_login_at) %></td>
+<td><details><summary class="small">Edit</summary>
+  <form method="post" action="/admin/users/<%= u.id %>" class="f"><%- include('../partials/csrf') %>
+    <label>Full name</label><input name="full_name" value="<%= u.full_name %>"><label>Branch</label><select name="branch_id"><option value="">All (Admin only)</option><% branches.forEach(function (b) { %><option value="<%= b.id %>" <%= u.branch_id === b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select>
+    <label>Mobile</label><input name="mobile" value="<%= u.mobile %>"><label>Active</label><select name="active"><option value="1" <%= u.active ? 'selected' : '' %>>Active</option><option value="0" <%= u.active ? '' : 'selected' %>>Inactive</option></select>
+    <div class="actions"><button class="btn small">Save</button></div></form>
+  <% if (u.locked) { %><form method="post" action="/admin/users/<%= u.id %>" class="inline"><%- include('../partials/csrf') %><input type="hidden" name="action" value="unlock"><button class="btn small warn">Unlock</button></form><% } %>
+  <form method="post" action="/admin/users/<%= u.id %>" class="f"><%- include('../partials/csrf') %><input type="hidden" name="action" value="reset"><label>New temporary password</label><input name="password" type="password"><div class="actions"><button class="btn small secondary">Reset password</button></div></form>
+</details></td></tr><% }) %>
+</tbody></table></div>
+<div class="panel" style="margin-top:1rem"><h2 style="margin-top:0">Add user</h2>
+<form method="post" action="/admin/users" class="f"><%- include('../partials/csrf') %><div class="row">
+  <div><label>Username</label><input name="username" value="<%= val('username') %>" required></div><div><label>Full name</label><input name="full_name" value="<%= val('full_name') %>" required></div>
+  <div><label>Role</label><select name="role"><option value="loan_officer">Loan Officer</option><option value="cro">CRO (Credit Risk Officer)</option><option value="admin">Admin</option></select></div>
+  <div><label>Branch</label><select name="branch_id"><option value="">All (Admin only)</option><% branches.forEach(function (b) { %><option value="<%= b.id %>"><%= b.name %></option><% }) %></select></div>
+  <div><label>Mobile (for the SMS sign-in code)</label><input name="mobile" value="<%= val('mobile') %>" placeholder="+675 7xxx xxxx" required></div>
+  <div><label>Temporary password</label><input name="password" type="password" required></div></div>
+  <p class="hint">Strong passwords: 10+ characters with upper and lower case, a number and a symbol. Sessions sign out after 15 minutes idle; 5 wrong attempts lock the account.</p>
+  <div class="actions"><button class="btn">Create user</button></div></form></div>
+<%- include('../partials/footer') %>

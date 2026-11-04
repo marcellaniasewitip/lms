@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title><%= title %></title><link rel="stylesheet" href="/static/css/app.css">
+<style>body{background:#fff}.r{max-width:380px;margin:1rem auto;border:1px solid #000;padding:12px 16px;font-size:13px}.r h1{font-size:16px;margin:0}.r table td{border:0;padding:2px 0}.big{font-size:20px;font-weight:700}</style></head><body>
+<div class="r">
+  <h1><%= lender %></h1><div><%= branch.name %> · <%= branch.phone %></div>
+  <hr><div class="big">RECEIPT <%= p.receipt_no %></div>
+  <table>
+    <tr><td>Loan</td><td class="right"><%= l.loan_no %></td></tr>
+    <tr><td>Customer</td><td class="right"><%= c.given_names %> <%= c.surname %></td></tr>
+    <tr><td>Date received</td><td class="right"><%= fd(p.date_received) %></td></tr>
+    <tr><td>Posted</td><td class="right"><%= fts(p.posted_at) %></td></tr>
+    <tr><td>Channel</td><td class="right"><%= CHANNELS[p.channel] %><%= p.reference ? ' · ' + p.reference : '' %></td></tr>
+    <tr><td><strong><%= p.kind === 'reversal' ? 'Reversal' : 'Amount received' %></strong></td><td class="right"><strong><%= K(p.amount) %></strong></td></tr>
+    <% if (p.kind === 'payment') { %>
+    <tr><td>Applied to fees</td><td class="right"><%= K(p.applied_fees) %></td></tr>
+    <tr><td>Applied to interest</td><td class="right"><%= K(p.applied_interest) %></td></tr>
+    <tr><td>Applied to principal</td><td class="right"><%= K(p.applied_principal) %></td></tr>
+    <% if (p.overpayment) { %><tr><td>Overpaid — to be refunded</td><td class="right"><%= K(p.overpayment) %></td></tr><% } %>
+    <% } %>
+  </table>
+  <hr><div>Amount to collect your item today</div><div class="big"><%= K(p.balance_after != null ? p.balance_after : owing) %></div>
+  <% if (p.status === 'reversed') { %><p><strong>THIS PAYMENT WAS REVERSED.</strong></p><% } %>
+  <p class="small">Posted by <%= postedBy %>. Quote loan number <%= l.loan_no %> on bank or mobile transfers. Keep this receipt. Due date <%= fd(l.maturity_date) %>.</p>
+</div>
+<p class="noprint" style="text-align:center"><button class="btn" data-print>Print receipt</button> <a href="/loans/<%= l.id %>">Back to loan</a></p>
+<script src="/static/js/app.js"></script>
+</body></html>

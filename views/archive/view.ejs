@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<% const l = snap.loan; %>
+<div class="pagehead">
+  <div><h1>Archived loan <%= l.loan_no %> <span class="badge b-archived">read-only</span></h1>
+  <div class="muted"><%= snap.customer.name %> (<%= snap.customer.customer_no %>) · outcome <%= STATUS[l.pre_archive_status || l.status] %> · archived <%= fts(a.archived_at) %> by <%= by %> (<%= a.method %><%= a.reason ? ': ' + a.reason : '' %>) · keep until <%= fd(a.delete_after) %></div></div>
+  <div class="actions" style="margin:0"><a class="btn secondary" href="/archive/loan/<%= l.id %>/pdf">Export PDF</a></div>
+</div>
+<% if (a.restored_at) { %><div class="alert alert-info">Restored <%= fts(a.restored_at) %>: <%= a.restore_reason %>. <a href="/loans/<%= l.id %>">Open the live loan</a>.</div><% } %>
+<% if (is('admin') && !a.restored_at) { %>
+<details class="action"><summary>Restore to the active system (to fix an error)</summary><div>
+<form method="post" action="/archive/<%= a.id %>/restore" class="f"><%- include('../partials/csrf') %><label>Reason (logged)</label><input name="reason" required><div class="actions"><button class="btn warn small">Restore</button></div></form></div></details>
+<% } %>
+<div class="grid g2">
+<div class="panel"><h2 style="margin-top:0">Loan</h2><dl class="kv small">
+  <dt>Amount released</dt><dd><%= K(l.amount_released) || '—' %></dd><dt>Weekly rate</dt><dd><%= l.weekly_rate ? l.weekly_rate + '% (grade ' + l.rate_grade + ')' : '—' %></dd>
+  <dt>Interest added</dt><dd><%= K(l.interest_added) %></dd><dt>Total paid</dt><dd><%= K(l.total_paid) %></dd>
+  <% if (l.sale_total) { %><dt>Sale</dt><dd><%= K(l.sale_total) %> · surplus <%= K(l.surplus) %> · shortfall <%= K(l.shortfall) %></dd><% } %>
+  <dt>Application</dt><dd><%= fd(l.application_date) %></dd><dt>Released</dt><dd><%= fd(l.release_date) %></dd><dt>Maturity</dt><dd><%= fd(l.maturity_date) %></dd>
+  <dt>Closed</dt><dd><%= fd(l.date_closed) %></dd><dt>Expiry</dt><dd><%= fd(l.expiry_date) %></dd><dt>Archived</dt><dd><%= fd(l.archive_date) %></dd></dl></div>
+<div class="panel"><h2 style="margin-top:0">Items</h2>
+  <% snap.items.forEach(function (i) { %><p><strong><%= i.item_no %></strong> <%= i.brand_name %> <%= i.model %> — <%= CUSTODY[i.custody_status] %><br><span class="small muted"><%= i.vin || i.serial_no || i.imei %> · grade <%= i.grade %> · assessed <%= K(i.assessed_value) %><%= i.returned_to ? ' · returned to ' + i.returned_to : '' %></span></p>
+  <div class="photos"><% i.photos.forEach(function (pid) { %><a href="/files/<%= pid %>"><img src="/files/<%= pid %>" alt="item photo"></a><% }) %></div><% }) %>
+  <h3>Documents</h3><p class="small"><% snap.documents.forEach(function (d) { %><a href="/files/<%= d.id %>"><%= d.kind.replace(/_/g, ' ') %></a> · <% }) %></p></div>
+</div>
+<div class="panel"><h2 style="margin-top:0">Payments</h2><table><tr><th>Receipt</th><th>Received</th><th class="num">Amount</th><th>Channel</th><th>Status</th></tr><% snap.payments.forEach(function (p) { %><tr><td><%= p.receipt_no %></td><td><%= fd(p.date_received) %></td><td class="num"><%= K(p.amount) %></td><td><%= p.channel %> <%= p.reference || '' %></td><td><%= p.status %></td></tr><% }) %></table></div>
+<div class="panel"><h2 style="margin-top:0">Interest entries</h2><table><tr><th>Date</th><th class="num">Principal</th><th class="num">Rate</th><th class="num">Interest</th><th>Kind</th></tr><% snap.interest.forEach(function (e) { %><tr><td><%= fd(e.entry_date) %></td><td class="num"><%= K(e.principal_owed) %></td><td class="num"><%= e.rate %>%</td><td class="num"><%= K(e.amount) %></td><td><%= e.kind %></td></tr><% }) %></table></div>
+<div class="panel"><h2 style="margin-top:0">History</h2><table><tr><th>When</th><th>Event</th><th>Note</th><th>By</th></tr><% snap.history.forEach(function (h) { %><tr><td class="nowrap"><%= fts(h.at) %></td><td><%= h.type %> <%= h.to_status ? '→ ' + STATUS[h.to_status] : '' %></td><td><%= h.note %></td><td><%= h.user_name || 'system' %></td></tr><% }) %></table></div>
+<%- include('../partials/footer') %>

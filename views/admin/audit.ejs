@@ -1,0 +1,8 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Audit log</h1><div class="muted">Every create, edit, ID-scan view, valuation, rate choice, approval, payment, reversal, item movement, forfeiture, sale, archive, restore and deletion — with user, time, old and new value. No one can edit the log.</div></div></div>
+<form class="panel f" method="get"><div class="row"><div><label>Username</label><input name="user" value="<%= query.user || '' %>"></div><div><label>Action contains</label><input name="action" value="<%= query.action || '' %>"></div><div><label>Entity</label><input name="entity" value="<%= query.entity || '' %>" placeholder="loan, customer, item…"></div><div><label>Entity id</label><input name="entity_id" value="<%= query.entity_id || '' %>"></div></div><div class="actions"><button class="btn">Filter</button></div></form>
+<div class="tablewrap"><table><thead><tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Old value</th><th>New value</th><th>IP</th></tr></thead><tbody>
+<% list.forEach(function (a) { %><tr><td class="nowrap small"><%= fts(a.ts) %></td><td><%= a.username %><div class="small muted"><%= a.role %></div></td><td><%= a.action %></td><td class="small"><%= a.entity %> <%= a.entity_id %></td>
+<td class="small mono" style="max-width:260px;word-break:break-word"><%= a.old_value || '' %></td><td class="small mono" style="max-width:320px;word-break:break-word"><%= a.new_value || '' %></td><td class="small"><%= a.ip || '' %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

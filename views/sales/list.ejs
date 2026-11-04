@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Forfeited items for sale</h1><div class="muted">The CRO declares forfeiture; the Admin approves the reserve price and records the sale. Items are offered at a public internet auction first; if they do not sell there, they may be sold by other reasonable means.</div></div></div>
+<% if (!list.length) { %><div class="panel empty">No forfeited items.</div><% } %>
+<% list.forEach(function (s) { %>
+<div class="panel">
+  <div class="pagehead" style="margin:0"><h3 style="margin:0"><%= s.item_no %> — <%= s.item %> <span class="muted small"><%= s.branch_name %> · loan <a href="/loans/<%= s.loan_id %>"><%= s.loan_no %></a></span></h3><%- include('../partials/badge', { s: s.status }) %></div>
+  <p class="small">Forfeited <%= fd(s.forfeited_on) %> · assessed value <%= K(s.assessed_value) %> · owed at forfeiture <strong><%= K(s.owing_at_forfeiture) %></strong>
+  <%= s.reserve_price ? ' · reserve ' + K(s.reserve_price) : '' %><%= s.auction_platform ? ' · listed on ' + s.auction_platform + ' (' + s.listing_ref + ') ' + fd(s.listed_at) : '' %><%= s.auction_result ? ' · ' + s.auction_result + ' at auction' : '' %></p>
+  <% if (s.status === 'sold') { %><p>Sold <%= fd(s.sale_date) %> for <strong><%= K(s.sale_price) %></strong> to <%= s.buyer_name %> (<%= s.sale_method === 'auction' ? 'auction' : 'other reasonable means' %>), receipt <%= s.sale_receipt_no %>. Days from forfeiture to sale: <%= dates.diffDays(s.forfeited_on, s.sale_date) %>.</p><% } %>
+  <% if (is('admin')) { %>
+    <% if (['awaiting_reserve','approved'].includes(s.status)) { %><form method="post" action="/sales/<%= s.id %>/reserve" class="f inline"><%- include('../partials/csrf') %><label>Reserve price (K)</label><input name="reserve_price" value="<%= s.reserve_price ? (s.reserve_price / 100).toFixed(2) : '' %>" style="width:9rem"> <button class="btn small">Approve reserve</button></form><% } %>
+    <% if (s.status === 'approved') { %><form method="post" action="/sales/<%= s.id %>/listing" class="f"><%- include('../partials/csrf') %><div class="row"><div><label>Public internet auction site</label><input name="auction_platform" required></div><div><label>Listing reference</label><input name="listing_ref" required></div><div><label>Listed on</label><input name="listed_at" value="<%= fd(today) %>"></div></div><div class="actions"><button class="btn small">Record listing</button></div></form><% } %>
+    <% if (s.status === 'listed') { %>
+      <form method="post" action="/sales/<%= s.id %>/sold" class="f"><%- include('../partials/csrf') %>
+        <div class="row"><div><label>Method</label><select name="sale_method"><option value="auction">Internet auction</option><% if (s.auction_result === 'not sold') { %><option value="other">Other reasonable means</option><% } %></select></div>
+        <div><label>Sale date</label><input name="sale_date" value="<%= fd(today) %>"></div><div><label>Sale price (K)</label><input name="sale_price" required></div>
+        <div><label>Buyer name</label><input name="buyer_name" required></div><div><label>Buyer contact</label><input name="buyer_contact"></div><div><label>Sale receipt no.</label><input name="sale_receipt_no" required></div></div>
+        <div class="actions"><button class="btn small">Record sale</button></div></form>
+      <% if (!s.auction_result) { %><form method="post" action="/sales/<%= s.id %>/unsold" class="inline"><%- include('../partials/csrf') %><input name="note" placeholder="Auction result note"> <button class="btn small secondary">Did not sell at auction</button></form><% } %>
+    <% } %>
+  <% } %>
+</div>
+<% }) %>
+<%- include('../partials/footer') %>

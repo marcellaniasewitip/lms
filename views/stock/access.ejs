@@ -1,0 +1,11 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Store, yard and safe access</h1><div class="muted">Only the Loan Officer on duty and the CRO can open the store. Every opening and closing is recorded here (alongside CCTV).</div></div></div>
+<% if (is('loan_officer', 'cro')) { %>
+<form method="post" action="/stock/access" class="panel f"><%- include('../partials/csrf') %><div class="row">
+  <div><label>Area</label><select name="area"><option value="store">Locked store</option><option value="yard">Car yard</option><option value="safe">Safe (keys and papers)</option></select></div>
+  <div><label>Action</label><select name="action"><option value="open">Opened</option><option value="close">Closed</option></select></div>
+  <div><label>Note</label><input name="note"></div></div><div class="actions"><button class="btn">Record</button></div></form>
+<% } %>
+<table><tr><th>When</th><th>Branch</th><th>Area</th><th>Action</th><th>By</th><th>Note</th></tr>
+<% list.forEach(function (a) { %><tr><td><%= fts(a.at) %></td><td><%= a.branch_name %></td><td><%= a.area %></td><td><%= a.action %></td><td><%= a.full_name %></td><td><%= a.note || '' %></td></tr><% }) %></table>
+<%- include('../partials/footer') %>

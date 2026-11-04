@@ -1,0 +1,4 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Reports</h1><div class="muted"><%= is('loan_officer') ? 'Loan Officers see their own customers.' : 'All branches and officers.' %> Every report exports to Excel and PDF.</div></div></div>
+<div class="grid g3"><% list.forEach(function (r) { %><a class="panel" href="/reports/<%= r.key %>" style="text-decoration:none;color:inherit"><h3 style="margin-top:0;color:var(--accent)"><%= r.title %></h3><p class="small muted" style="margin:0"><%= r.desc %></p></a><% }) %></div>
+<%- include('../partials/footer') %>

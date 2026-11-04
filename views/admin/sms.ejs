@@ -1,0 +1,6 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>SMS outbox</h1><div class="muted">Customer messages in English or Tok Pisin. With no gateway configured (LMS_SMS_GATEWAY_URL), messages are logged here instead of sent.</div></div></div>
+<div class="tablewrap"><table><thead><tr><th>Created</th><th>To</th><th>Lang</th><th>Template</th><th>Message</th><th>Status</th></tr></thead><tbody>
+<% list.forEach(function (m) { %><tr><td class="nowrap small"><%= fts(m.created_at) %></td><td class="nowrap"><%= m.to_number %></td><td><%= m.language %></td><td class="small"><%= m.template %></td><td class="small"><%= m.template === 'mobile_code' ? m.body.replace(/\d{6}/, '••••••') : m.body %></td><td><%- include('../partials/badge', { s: m.status }) %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,202 @@
+<%- include('../partials/header') %>
+<% const released = !!l.release_date; const payable = ['active','in_grace'].includes(l.status);
+   const flow = ['draft','submitted','approved','active','paid','redeemed'];
+   const daysLeft = l.maturity_date ? dates.diffDays(today, l.maturity_date) : null; %>
+<div class="pagehead">
+  <div><h1>Loan <%= l.loan_no %> <%- include('../partials/badge', { s: l.status }) %><% if (l.dispute_open) { %> <span class="badge b-rejected">dispute open</span><% } %></h1>
+  <div class="muted"><a href="/customers/<%= c.id %>"><%= c.given_names %> <%= c.surname %></a> (<%= c.customer_no %>) · Loan Officer <%= officer %><%= croName ? ' · CRO ' + croName : '' %></div></div>
+  <div class="actions" style="margin:0">
+    <% if (l.weekly_rate) { %><a class="btn secondary" href="/loans/<%= l.id %>/ticket" target="_blank"><%= released ? 'Print pledge ticket' : 'Preview pledge ticket' %></a><% } %>
+  </div>
+</div>
+<div class="steps"><% ['Application','CRO valuation','Approved','Released','Paid in full','Item returned'].forEach(function (s, i) { const cur = flow.indexOf(l.status === 'returned' ? 'draft' : l.status === 'in_grace' ? 'active' : l.status); %><span class="<%= i < cur ? 'done' : i === cur ? 'now' : '' %>"><%= s %></span><% }) %>
+<% if (['in_grace','forfeited','item_sold'].includes(l.status)) { %><span class="now">→ <%= STATUS[l.status] %></span><% } %></div>
+
+<% if (l.decision_note && ['returned','rejected'].includes(l.status)) { %><div class="alert alert-warn"><strong>CRO note:</strong> <%= l.decision_note %></div><% } %>
+
+<% if (released) { %>
+<div class="grid g4">
+  <div class="stat"><div class="l">Amount to collect your item today</div><div class="balance"><%= K(['forfeited','item_sold'].includes(l.status) ? l.owing_at_forfeiture : owing) %></div><div class="l"><%= ['forfeited','item_sold'].includes(l.status) ? 'owed at forfeiture' : 'principal + interest + fees' %></div></div>
+  <div class="stat"><div class="l">Principal owing</div><div class="n"><%= K(l.principal_owing) %></div><div class="l">of <%= K(l.amount_released) %> released</div></div>
+  <div class="stat"><div class="l">Interest owing / added to date</div><div class="n"><%= K(l.interest_owing) %></div><div class="l"><%= K(l.interest_added) %> added at <%= l.weekly_rate %>% a week (grade <%= l.rate_grade %>)</div></div>
+  <div class="stat"><div class="l">Fees owing / total paid</div><div class="n"><%= K(l.fees_owing) %></div><div class="l"><%= K(l.total_paid) %> paid to date<%= l.waived_total ? ' · ' + K(l.waived_total) + ' waived' : '' %></div></div>
+</div>
+<% } %>
+
+<div class="grid g2" style="margin-top:1rem">
+<div>
+<!-- ======== ACTIONS ======== -->
+<div class="panel">
+<h2 style="margin-top:0">Next steps</h2>
+
+<% if (['draft','returned'].includes(l.status) && is('loan_officer')) { %>
+  <form method="post" action="/loans/<%= l.id %>/update" class="f"><%- include('../partials/csrf') %>
+    <label>Items</label>
+    <% lim.lis.forEach(function (i) { %><label class="check"><input type="checkbox" name="item_ids" value="<%= i.item_id %>" checked> <%= i.item_no %> — <%= i.brand_name %> <%= i.model %></label><% }) %>
+    <% available.filter(function (a) { return !lim.lis.some(function (x) { return x.item_id === a.id; }); }).forEach(function (i) { %><label class="check"><input type="checkbox" name="item_ids" value="<%= i.id %>"> <%= i.item_no %> — <%= i.brand_name %> <%= i.model %></label><% }) %>
+    <label>Amount asked for (K)</label><input name="requested_amount" value="<%= (l.requested_amount / 100).toFixed(2) %>">
+    <div class="actions"><button class="btn secondary small">Save changes</button></div>
+  </form>
+  <% if (!readiness.ok) { %><div class="alert alert-error small"><ul><% readiness.reasons.forEach(function (r) { %><li><%= r %></li><% }) %></ul></div><% } %>
+  <form method="post" action="/loans/<%= l.id %>/submit" class="inline"><%- include('../partials/csrf') %><button class="btn">Submit to the CRO</button></form>
+<% } %>
+
+<% if (l.status === 'submitted') { %>
+  <p>Each item is inspected against its category checklist and graded. The grade sets the loan share and the weekly rate band.</p>
+  <table><tr><th>Item</th><th>Grade</th><th class="num">Assessed</th><th class="num">Allowed</th><th></th></tr>
+  <% lim.lis.forEach(function (i) { %><tr><td><%= i.item_no %> <%= i.brand_name %> <%= i.model %></td><td><%= i.grade || '—' %></td><td class="num"><%= K(i.assessed_value) %></td><td class="num"><%= K(i.max_loan) %></td>
+  <td><% if (is('cro')) { %><a class="btn small <%= i.valued_at ? 'secondary' : '' %>" href="/loans/<%= l.id %>/value/<%= i.item_id %>"><%= i.valued_at ? 'Re-inspect' : 'Inspect & value' %></a><% } %></td></tr><% }) %>
+  <tr><th colspan="2">Loan limit (sum of allowed amounts)</th><th class="num"><%= K(lim.assessedTotal) %></th><th class="num"><%= K(lim.maxTotal) %></th><th></th></tr></table>
+  <p class="small">Customer asked for <strong><%= K(l.requested_amount) %></strong>. <% if (lim.band) { %>Rate band for grade <%= lim.worst %> (lowest-graded item): <strong><%= lim.band.rate_min %>%–<%= lim.band.rate_max %>%</strong> a week.<% } %></p>
+  <% if (is('cro')) { %>
+    <% if (user.id === l.created_by) { %><div class="alert alert-error">You created this application, so you cannot decide it.</div><% } else { %>
+    <form method="post" action="/loans/<%= l.id %>/decide" class="f"><%- include('../partials/csrf') %>
+      <div class="row">
+        <div><label>Loan amount (K)</label><input name="amount" value="<%= val('amount', lim.valued ? (Math.min(lim.maxTotal, l.requested_amount) / 100).toFixed(2) : '') %>"></div>
+        <div><label>Weekly rate</label><select name="rate"><% rateOptions.forEach(function (r) { const ok = !lim.band || (r >= lim.band.rate_min && r <= lim.band.rate_max); %><option value="<%= r %>" <%= ok ? '' : 'disabled' %> <%= String(val('rate')) === String(r) ? 'selected' : '' %>><%= r %>%<%= ok ? '' : ' (outside band)' %></option><% }) %></select></div>
+      </div>
+      <label>Note (required to return or reject)</label><textarea name="note"><%= val('note') %></textarea>
+      <div class="actions"><button class="btn" name="decision" value="approve">Approve</button><button class="btn warn" name="decision" value="return">Return to Loan Officer</button><button class="btn danger" name="decision" value="reject">Reject</button></div>
+    </form><% } %>
+  <% } else { %><p class="muted">Waiting for the CRO.</p><% } %>
+<% } %>
+
+<% if (l.status === 'approved') { %>
+  <p>Approved <strong><%= K(l.approved_amount) %></strong> at <strong><%= l.weekly_rate %>%</strong> a week on <%= fd(l.approval_date) %>.
+  <% if (figures) { %>Weekly charge <%= K(figures.weeklyCharge) %>; if released today the redemption price is <strong><%= K(figures.price) %></strong> on <%= fd(figures.redemptionDate) %> (<%= figures.charges %> weekly charges<%= l.fees_total ? ' + fees ' + K(l.fees_total) : '' %>).<% } %></p>
+  <% if (is('loan_officer')) { %>
+  <form method="post" action="/loans/<%= l.id %>/release" class="f"><%- include('../partials/csrf') %>
+    <div class="row"><div><label>Pay out by</label><select name="channel"><% Object.entries(CHANNELS).forEach(function ([k, v]) { %><option value="<%= k %>"><%= v %></option><% }) %></select></div>
+    <div><label>Transfer reference (bank / mobile)</label><input name="reference"></div></div>
+    <% if (l.fees_total) { %><div class="alert alert-info small">Fees shown to the customer before signing: <% JSON.parse(l.fee_lines || '[]').forEach(function (f) { %><%= f.name %> <%= K(f.amount) %>; <% }) %></div><% } %>
+    <label class="check"><input type="checkbox" name="agreement_signed" value="1"> The customer has read and signed the pledge ticket and Disclosure Statement (with the forfeiture terms), and I have checked their ID today.</label>
+    <div class="actions"><a class="btn secondary" href="/loans/<%= l.id %>/ticket" target="_blank">Preview ticket</a><button class="btn">Release money</button></div>
+  </form><% } %>
+<% } %>
+
+<% if (payable) { %>
+  <p>Due <strong><%= fd(l.maturity_date) %></strong> <% if (daysLeft >= 0) { %>(<%= daysLeft %> days)<% } %> · grace ends <strong><%= fd(l.grace_end_date) %></strong> · next interest <%= fd(l.next_interest_date) %>.
+  No fixed schedule: the customer may pay any amount at any time. Each payment pays fees, then interest, then principal.</p>
+  <% if (is('loan_officer')) { %>
+  <details class="action" open><summary>Take a payment</summary><div>
+    <form method="post" action="/loans/<%= l.id %>/payments" class="f"><%- include('../partials/csrf') %>
+      <div class="row"><div><label>Amount (K)</label><input name="amount" inputmode="decimal" value="<%= val('amount') %>" required></div>
+      <div><label>Channel</label><select name="channel"><% Object.entries(CHANNELS).forEach(function ([k, v]) { %><option value="<%= k %>" <%= val('channel') === k ? 'selected' : '' %>><%= v %></option><% }) %></select></div>
+      <div><label>Reference (bank / mobile)</label><input name="reference" value="<%= val('reference') %>"></div>
+      <div><label>Date received</label><input name="date_received" value="<%= val('date_received', fd(today)) %>"></div></div>
+      <div class="actions"><button class="btn">Post payment & print receipt</button></div>
+    </form></div></details>
+  <% } %>
+  <% if (is('loan_officer', 'cro')) { %>
+  <details class="action"><summary>Request an interest or fee waiver</summary><div>
+    <form method="post" action="/loans/<%= l.id %>/waivers" class="f"><%- include('../partials/csrf') %>
+      <div class="row"><div><label>Waive</label><select name="kind"><option value="interest">Interest (owing <%= K(l.interest_owing) %>)</option><option value="fees">Fees (owing <%= K(l.fees_owing) %>)</option></select></div><div><label>Amount (K)</label><input name="amount" required></div></div>
+      <label>Written reason</label><input name="reason" required placeholder="e.g. paid in full on maturity day"><div class="actions"><button class="btn small">Request waiver (CRO approves)</button></div></form></div></details>
+  <% } %>
+  <% if (is('cro') && l.status === 'in_grace') { %>
+    <% if (today >= l.grace_end_date) { %>
+    <form method="post" action="/loans/<%= l.id %>/forfeit" class="f" data-confirm="Declare the item forfeited? It will move to for-sale stock."><%- include('../partials/csrf') %>
+      <div class="alert alert-error">The grace period ended on <%= fd(l.grace_end_date) %> with <%= K(owing) %> owing.</div>
+      <label>Note</label><input name="note"><div class="actions"><button class="btn danger">Declare item forfeited</button></div></form>
+    <% } else { %><p class="small muted">Forfeiture can be declared from <%= fd(l.grace_end_date) %> if the loan is still not paid.</p><% } %>
+  <% } %>
+<% } %>
+
+<% if (l.status === 'paid') { %>
+  <div class="alert alert-success">Paid in full — balance K0.00. The item can be returned.</div>
+  <% if (is('loan_officer')) { %><a class="btn" href="/loans/<%= l.id %>/return">Return item to customer</a><% } %>
+<% } %>
+<% if (['rejected','cancelled'].includes(l.status) && !l.date_closed) { %>
+  <div class="alert alert-warn">The items must be handed back to the customer before this application can close.</div>
+  <% if (is('loan_officer')) { %><a class="btn" href="/loans/<%= l.id %>/return">Hand items back</a><% } %>
+<% } %>
+<% if (['forfeited'].includes(l.status)) { %><p>Forfeited on <%= fd(l.forfeited_at) %> with <%= K(l.owing_at_forfeiture) %> owing. The item is offered at a public internet auction. <a href="/sales">Sales →</a></p><% } %>
+<% if (l.status === 'item_sold') { %><p>Sold for <strong><%= K(l.sale_total) %></strong> against <%= K(l.owing_at_forfeiture) %> owed: <%= l.surplus ? 'surplus ' + K(l.surplus) + ' owed to the pledger' : 'shortfall ' + K(l.shortfall) %>.</p><% } %>
+<% if (eligibility) { %>
+  <h3>Archive</h3>
+  <p class="small">Closed <%= fd(l.date_closed) %> · expiry date <strong><%= fd(l.expiry_date) %></strong> — the nightly check pulls it out to the archive on that day if every condition is met.</p>
+  <% if (!eligibility.eligible) { %><ul class="small"><% eligibility.reasons.forEach(function (r) { %><li><%= r %></li><% }) %></ul><% } %>
+  <% if (is('admin') && eligibility.eligible) { %><form method="post" action="/loans/<%= l.id %>/archive" class="f"><%- include('../partials/csrf') %><label>Reason for pulling out early</label><input name="reason" required><div class="actions"><button class="btn secondary small">Archive now (early pull-out)</button></div></form><% } %>
+<% } %>
+
+<% if (['draft','submitted','returned','approved'].includes(l.status) && is('loan_officer')) { %>
+  <details class="action" style="margin-top:.8rem"><summary>Cancel application</summary><div>
+  <form method="post" action="/loans/<%= l.id %>/cancel" class="f"><%- include('../partials/csrf') %><label>Reason</label><input name="reason" required><div class="actions"><button class="btn danger small">Cancel application</button></div></form></div></details>
+<% } %>
+</div>
+
+<!-- ======== TICKET & DOCUMENTS ======== -->
+<% if (released) { %>
+<div class="panel"><h2 style="margin-top:0">Pledge ticket and documents</h2>
+  <table><tr><th>Ticket</th><th>Kind</th><th>Status</th><th>Printed</th></tr>
+  <% tickets.forEach(function (t) { %><tr><td><%= t.ticket_no %> v<%= t.version %></td><td><%= t.kind %><%= t.reason ? ' — ' + t.reason : '' %></td><td><%- include('../partials/badge', { s: t.status }) %></td><td><%= fts(t.printed_at) %></td></tr><% }) %></table>
+  <p class="small"><% docs.forEach(function (d) { %><a href="/files/<%= d.id %>"><%= d.kind.replace(/_/g, ' ') %></a> (<%= fd(d.created_at) %>) · <% }) %><% if (!docs.some(function (d) { return d.kind === 'signed_ticket'; })) { %><span style="color:var(--bad)">Signed ticket not yet scanned in.</span><% } %></p>
+  <% if (is('loan_officer') && !['redeemed','item_sold'].includes(l.status)) { %>
+  <details class="action"><summary>Scan in the signed ticket copy</summary><div><form method="post" action="/loans/<%= l.id %>/documents?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f"><input type="file" name="signed" accept="image/*,application/pdf" required><div class="actions"><button class="btn small">Upload</button></div></form></div></details>
+  <% if ([ 'active','in_grace','paid' ].includes(l.status)) { %>
+  <details class="action"><summary>Lost ticket — issue a replacement</summary><div>
+    <p class="small">Only after the pledger shows a current passport, driver's licence or other photo ID. The old ticket is cancelled.</p>
+    <form method="post" action="/loans/<%= l.id %>/ticket/replace" class="f"><%- include('../partials/csrf') %>
+      <div class="row"><div><label>Photo ID shown</label><select name="id_record_id"><% ids.filter(function (x) { return x.is_photo_id; }).forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %> ****<%= x.number_last4 %></option><% }) %></select></div><div><label>Number on the ID shown</label><input name="id_number_shown" required autocomplete="off"></div></div>
+      <label>Reason</label><input name="reason" value="Ticket lost" required><div class="actions"><button class="btn small">Issue replacement</button></div></form></div></details>
+  <% } %>
+  <% } %>
+</div>
+<% } %>
+</div>
+
+<div>
+<!-- ======== KEY DATES & ITEMS ======== -->
+<div class="panel"><h2 style="margin-top:0">Key dates</h2>
+  <dl class="kv small">
+    <dt>Application</dt><dd><%= fd(l.application_date) %></dd><dt>Approval</dt><dd><%= fd(l.approval_date) || '—' %></dd>
+    <dt>Release</dt><dd><%= fd(l.release_date) || '—' %><%= l.release_channel ? ' · ' + CHANNELS[l.release_channel] + (l.release_ref ? ' ' + l.release_ref : '') : '' %></dd>
+    <dt>Next interest</dt><dd><%= fd(l.next_interest_date) || '—' %></dd><dt>Maturity</dt><dd><%= fd(l.maturity_date) || '—' %></dd>
+    <dt>Grace end</dt><dd><%= fd(l.grace_end_date) || '—' %></dd><dt>Closed</dt><dd><%= fd(l.date_closed) || '—' %></dd>
+    <dt>Expiry</dt><dd><%= fd(l.expiry_date) || '—' %></dd><dt>Archive</dt><dd><%= fd(l.archive_date) || '—' %></dd>
+  </dl>
+  <% if (terms) { %><p class="small muted">This loan keeps its own copy of the terms (taken <%= fts(terms.taken_at) %>): <%= terms.term_months %> months, <%= terms.grace_days %>-day grace, expiry <%= terms.expiry_days %> days after closing. Later settings changes never alter it.</p><% } %>
+</div>
+<div class="panel"><h2 style="margin-top:0">Security</h2>
+  <table><tr><th>Sched.</th><th>Item</th><th>Grade</th><th class="num">Assessed</th><th class="num">Allowed</th><th>Custody</th></tr>
+  <% lim.lis.forEach(function (i) { %><tr><td><%= i.schedule_no %></td><td><a href="/items/<%= i.item_id %>"><%= i.item_no %></a> <%= i.brand_name %> <%= i.model %><div class="small muted"><%= i.location %></div></td><td><%= i.grade || '—' %><div class="small muted"><%= i.valued_by_name || '' %></div></td>
+  <td class="num"><%= K(i.assessed_value) %></td><td class="num"><%= K(i.max_loan) %></td><td><%- include('../partials/badge', { s: i.custody_status }) %></td></tr><% }) %></table>
+  <% if (l.ltv_pct) { %><p class="small">Loan-to-value <strong><%= l.ltv_pct %>%</strong> of assessed value <%= K(l.assessed_value_total) %>.</p><% } %>
+</div>
+<div class="panel"><h2 style="margin-top:0">Notes and disputes</h2>
+  <form method="post" action="/loans/<%= l.id %>/notes" class="f"><%- include('../partials/csrf') %><textarea name="note" placeholder="Add a note to the loan history"></textarea><div class="actions"><button class="btn small secondary">Add note</button></div></form>
+  <details class="action"><summary><%= l.dispute_open ? 'Close the dispute' : 'Open a dispute' %></summary><div>
+  <form method="post" action="/loans/<%= l.id %>/dispute" class="f"><%- include('../partials/csrf') %><input type="hidden" name="open" value="<%= l.dispute_open ? 0 : 1 %>"><label><%= l.dispute_open ? 'How it was resolved' : 'What is disputed' %></label><input name="note" required><div class="actions"><button class="btn small">Save</button></div></form>
+  <% if (l.dispute_note) { %><p class="small">Last: <%= l.dispute_note %></p><% } %></div></details>
+</div>
+</div>
+</div>
+
+<% if (released) { %>
+<div class="panel"><h2 style="margin-top:0">Payments</h2>
+  <% if (!payments.length) { %><div class="empty">No payments yet.</div><% } else { %>
+  <div class="tablewrap"><table><thead><tr><th>Receipt</th><th>Received</th><th>Channel</th><th>Reference</th><th class="num">Amount</th><th class="num">Fees</th><th class="num">Interest</th><th class="num">Principal</th><th class="num">Left after</th><th>Status</th><th>Posted by</th><th></th></tr></thead><tbody>
+  <% payments.forEach(function (p) { const pending = reversals.find(function (r) { return r.payment_id === p.id && r.status === 'pending'; }); %>
+  <tr><td><a href="/loans/<%= l.id %>/receipt/<%= p.id %>"><%= p.receipt_no %></a></td><td><%= fd(p.date_received) %></td><td><%= CHANNELS[p.channel] %></td><td><%= p.reference %></td>
+  <td class="num"><%= K(p.amount) %></td><td class="num"><%= p.kind === 'payment' ? K(p.applied_fees) : '' %></td><td class="num"><%= p.kind === 'payment' ? K(p.applied_interest) : '' %></td><td class="num"><%= p.kind === 'payment' ? K(p.applied_principal) : '' %><%= p.overpayment ? ' (+' + K(p.overpayment) + ' over)' : '' %></td>
+  <td class="num"><%= p.balance_after != null ? K(p.balance_after) : '' %></td><td><%- include('../partials/badge', { s: p.kind === 'reversal' ? 'reversed' : p.status, label: p.kind === 'reversal' ? 'reversal entry' : null }) %><%= pending ? ' reversal pending' : '' %></td><td class="small"><%= p.posted_by_name %></td>
+  <td><% if (is('loan_officer') && p.kind === 'payment' && p.status === 'posted' && !pending && !['redeemed','item_sold'].includes(l.status)) { %><details><summary class="small">Reverse…</summary><form method="post" action="/loans/<%= l.id %>/payments/<%= p.id %>/reverse" class="f"><%- include('../partials/csrf') %><input name="reason" placeholder="Reason" required><button class="btn small warn">Request</button></form></details><% } %></td></tr>
+  <% }) %></tbody></table></div><% } %>
+  <% if (refunds.length) { %><h3>Refunds and surplus</h3><table><tr><th>Kind</th><th class="num">Amount</th><th>Due</th><th>Status</th><th>Paid</th></tr><% refunds.forEach(function (r) { %><tr><td><%= r.kind %></td><td class="num"><%= K(r.amount) %></td><td><%= fd(r.due_date) %></td><td><%- include('../partials/badge', { s: r.status }) %></td><td><%= r.paid_at ? fts(r.paid_at) + ' ' + (r.channel || '') + ' ' + (r.reference || '') : '' %> <% if (r.status === 'owed') { %><a href="/payments/refunds">Pay →</a><% } %></td></tr><% }) %></table><% } %>
+  <% if (waivers.length) { %><h3>Waivers</h3><table><tr><th>Requested</th><th>Kind</th><th class="num">Amount</th><th>Reason</th><th>By</th><th>Status</th><th></th></tr>
+  <% waivers.forEach(function (w) { %><tr><td><%= fts(w.requested_at) %></td><td><%= w.kind %></td><td class="num"><%= K(w.amount) %><%= w.applied_amount != null && w.applied_amount !== w.amount ? ' (applied ' + K(w.applied_amount) + ')' : '' %></td><td><%= w.reason %></td><td><%= w.by_name %></td><td><%- include('../partials/badge', { s: w.status }) %></td>
+  <td><% if (is('cro') && w.status === 'pending' && w.requested_by !== user.id) { %><form method="post" action="/loans/<%= l.id %>/waivers/<%= w.id %>" class="inline"><%- include('../partials/csrf') %><input name="note" placeholder="Note" style="width:8rem"><button class="btn small" name="approve" value="1">Approve</button><button class="btn small danger" name="approve" value="0">Reject</button></form><% } %></td></tr><% }) %></table><% } %>
+</div>
+<div class="panel"><h2 style="margin-top:0">Weekly interest entries</h2>
+  <div class="tablewrap"><table><thead><tr><th>Date</th><th>Kind</th><th class="num">Principal owed</th><th class="num">Rate</th><th class="num">Interest added</th><th>Note</th></tr></thead><tbody>
+  <% interest.forEach(function (e) { %><tr><td><%= fd(e.entry_date) %></td><td><%= e.kind %></td><td class="num"><%= K(e.principal_owed) %></td><td class="num"><%= e.rate %>%</td><td class="num"><%= K(e.amount) %></td><td class="small"><%= e.note || '' %></td></tr><% }) %></tbody></table></div>
+</div>
+<% } %>
+<% if (sales.length) { %><div class="panel"><h2 style="margin-top:0">Forfeiture sale</h2><table><tr><th>Item</th><th>Status</th><th class="num">Reserve</th><th>Auction</th><th>Sold</th><th class="num">Price</th><th>Buyer</th></tr>
+<% sales.forEach(function (s) { %><tr><td><%= s.item_no %></td><td><%- include('../partials/badge', { s: s.status }) %></td><td class="num"><%= K(s.reserve_price) %></td><td><%= s.auction_platform || '' %> <%= s.listing_ref || '' %> <%= s.auction_result ? '(' + s.auction_result + ')' : '' %></td><td><%= fd(s.sale_date) %></td><td class="num"><%= K(s.sale_price) %></td><td><%= s.buyer_name || '' %></td></tr><% }) %></table></div><% } %>
+
+<div class="panel"><h2 style="margin-top:0">History</h2>
+  <div class="tablewrap"><table><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Note</th><th>By</th></tr></thead><tbody>
+  <% history.forEach(function (h) { %><tr><td class="nowrap"><%= fts(h.at) %></td><td><%= h.type.replace(/_/g, ' ') %></td><td><%= h.to_status ? (h.from_status ? STATUS[h.from_status] + ' → ' : '') + STATUS[h.to_status] : '' %></td><td><%= h.note %></td><td class="small"><%= h.user_name || 'system' %></td></tr><% }) %></tbody></table></div>
+</div>
+<%- include('../partials/footer') %>

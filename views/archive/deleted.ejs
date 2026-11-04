@@ -1,0 +1,6 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Deletion log</h1><div class="muted">After the retention period the system permanently deletes archived loans. Only the loan number and the date deleted are kept.</div></div></div>
+<table><tr><th>Loan number</th><th>Deleted on</th></tr>
+<% if (!list.length) { %><tr><td colspan="2" class="empty">Nothing deleted yet.</td></tr><% } %>
+<% list.forEach(function (d) { %><tr><td><%= d.loan_no %></td><td><%= fd(d.deleted_on) %></td></tr><% }) %></table>
+<%- include('../partials/footer') %>

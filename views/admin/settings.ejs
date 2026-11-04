@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<% const k = function (t) { return (t / 100).toFixed(2); }; %>
+<div class="pagehead"><div><h1>Settings</h1><div class="muted">Currency kina (K) · Port Moresby time (UTC+10) · dates DD/MM/YYYY. Every loan keeps its own copy of its terms, so changes here never alter an existing loan.</div></div></div>
+<form method="post" action="/admin/settings" class="f"><%- include('../partials/csrf') %>
+<fieldset><legend>Lender</legend><div class="row"><div><label>Lender name</label><input name="lender_name" value="<%= s.lender_name %>"></div><div><label>Slogan</label><input name="lender_slogan" value="<%= s.lender_slogan %>"></div></div></fieldset>
+<fieldset><legend>Loan product</legend><div class="row">
+  <div><label>Minimum loan (K)</label><input name="min_loan" value="<%= k(s.min_loan) %>"></div>
+  <div><label>Longest term (months)</label><input name="term_months" value="<%= s.term_months %>"><div class="hint">From the release date; no renewals or extensions.</div></div>
+  <div><label>Grace period (days)</label><input name="grace_days" value="<%= s.grace_days %>"></div>
+  <div><label>Expiry period (days after closing)</label><input name="expiry_days" value="<%= s.expiry_days %>"></div>
+  <div><label>Archive retention (years, min 7)</label><input name="retention_years" value="<%= s.retention_years %>"></div>
+  <div><label>Days to pay sale surplus (s.19 PBA)</label><input name="surplus_payment_days" value="<%= s.surplus_payment_days %>"></div>
+  <div><label>Minimum item photos</label><input name="min_item_photos" value="<%= s.min_item_photos %>"></div>
+  <div><label>Car mileage tolerance at return (km)</label><input name="car_mileage_tolerance_km" value="<%= s.car_mileage_tolerance_km %>"></div>
+</div>
+<label>Weekly interest rate options</label><div class="checks"><% [10,11,12,13,14,15,16,17,18,19,20].forEach(function (r) { %><label class="check"><input type="checkbox" name="rate_options" value="<%= r %>" <%= s.rate_options.includes(r) ? 'checked' : '' %>> <%= r %>%</label><% }) %></div></fieldset>
+<fieldset><legend>AML thresholds and targets</legend><div class="row">
+  <div><label>Large cash transaction (K)</label><input name="aml_cash_threshold" value="<%= k(s.aml_cash_threshold) %>"></div>
+  <div><label>High-value item (K)</label><input name="aml_high_value" value="<%= k(s.aml_high_value) %>"></div>
+  <div><label>Repeat high-value items — count</label><input name="aml_repeat_count" value="<%= s.aml_repeat_count %>"></div>
+  <div><label>… within days</label><input name="aml_repeat_days" value="<%= s.aml_repeat_days %>"></div>
+  <div><label>Monthly lending target (K)</label><input name="monthly_lending_target" value="<%= k(s.monthly_lending_target) %>"></div>
+  <div><label>Monthly collection target (K)</label><input name="monthly_collection_target" value="<%= k(s.monthly_collection_target) %>"></div>
+</div></fieldset>
+<fieldset><legend>Pledge ticket text (English) — have a lawyer review before go-live</legend>
+  <% s.ticket_terms.forEach(function (t, i) { %><label>Term <%= i + 1 %></label><textarea name="ticket_terms"><%= t %></textarea><% }) %>
+  <label>Pledger confirmations</label><textarea name="pledger_confirmations"><%= s.pledger_confirmations %></textarea>
+  <label>Rights and obligations</label><textarea name="rights_obligations"><%= s.rights_obligations %></textarea>
+  <label>Disclosure Statement — extra text</label><textarea name="disclosure_extra"><%= s.disclosure_extra %></textarea>
+</fieldset>
+<div class="actions"><button class="btn">Save settings</button></div>
+</form>
+
+<form method="post" action="/admin/grades" class="panel f" id="grades"><%- include('../partials/csrf') %>
+<h2 style="margin-top:0">Quality grades: loan share and weekly rate band</h2>
+<p class="small muted">The grade decides both how much can be lent and which weekly rate applies. The system blocks a rate outside the band. (These start as the examples in the system description until the real figures are set.)</p>
+<table><tr><th>Grade</th><th>Condition</th><th>Accepted</th><th class="num">Share of assessed value %</th><th>Rate from %</th><th>Rate to %</th></tr>
+<% grades.forEach(function (g) { %><tr><td><strong><%= g.grade %></strong></td><td><input name="desc_<%= g.grade %>" value="<%= g.description %>"></td>
+<td><select name="accepted_<%= g.grade %>"><option value="1" <%= g.accepted ? 'selected' : '' %>>Yes</option><option value="0" <%= g.accepted ? '' : 'selected' %>>No</option></select></td>
+<td><input name="share_<%= g.grade %>" value="<%= g.share_pct %>" style="width:5rem"></td><td><input name="min_<%= g.grade %>" value="<%= g.rate_min ?? '' %>" style="width:4rem"></td><td><input name="max_<%= g.grade %>" value="<%= g.rate_max ?? '' %>" style="width:4rem"></td></tr><% }) %></table>
+<div class="actions"><button class="btn">Save grades</button></div></form>
+
+<div class="panel" id="fees"><h2 style="margin-top:0">Fees</h2><p class="small muted">Optional fixed fees (for example storage of a car), charged at release and shown to the customer before signing.</p>
+<table><tr><th>Category</th><th>Name</th><th class="num">Amount</th><th></th></tr>
+<% fees.forEach(function (f) { %><tr><td><%= f.category %></td><td><%= f.name %></td><td class="num"><%= K(f.amount) %></td><td><%= f.active ? '' : 'inactive' %> <% if (f.active) { %><form method="post" action="/admin/fees" class="inline"><%- include('../partials/csrf') %><input type="hidden" name="id" value="<%= f.id %>"><button class="btn small secondary" name="delete" value="1">Remove</button></form><% } %></td></tr><% }) %></table>
+<form method="post" action="/admin/fees" class="f"><%- include('../partials/csrf') %><div class="row"><div><label>Category</label><select name="category"><option value="car">Car</option><option value="laptop">Laptop</option><option value="phone">Phone</option></select></div><div><label>Name</label><input name="name" required></div><div><label>Amount (K)</label><input name="amount" required></div></div><div class="actions"><button class="btn small">Add fee</button></div></form></div>
+<%- include('../partials/footer') %>

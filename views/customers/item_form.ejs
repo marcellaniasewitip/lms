@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Receive item</h1><div class="muted">For <a href="/customers/<%= c.id %>"><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</a>. Only cars, laptops and phones of approved brands are accepted.</div></div></div>
+<div class="panel f">
+  <label>Category</label>
+  <select data-goto="/customers/<%= c.id %>/items/new?category=" style="max-width:320px">
+    <option value="">Choose…</option>
+    <% Object.entries(CATEGORIES).forEach(function ([k, d]) { %><option value="<%= k %>" <%= cat === k ? 'selected' : '' %>><%= d.label %></option><% }) %>
+  </select>
+</div>
+<% if (cat) { const has = function (n, v) { return oldHas(n, v) ? 'checked' : ''; }; %>
+<form method="post" action="/customers/<%= c.id %>/items?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
+<input type="hidden" name="category" value="<%= cat %>">
+<fieldset><legend>Description</legend>
+  <div class="row">
+    <div><label>Brand (approved list) <span class="req">*</span></label><select name="brand_id" required><option value=""></option><% brands.forEach(function (b) { %><option value="<%= b.id %>" <%= String(val('brand_id')) === String(b.id) ? 'selected' : '' %>><%= b.name %><%= b.min_model_year ? ' (' + b.min_model_year + ' or newer)' : '' %></option><% }) %></select></div>
+    <div><label>Model <span class="req">*</span></label><input name="model" value="<%= val('model') %>" required></div>
+    <div><label>Colour</label><input name="colour" value="<%= val('colour') %>"></div>
+    <div><label><%= cat === 'car' ? 'Year' : 'Model year' %> <span class="req">*</span></label><input name="year" value="<%= val('year') %>" inputmode="numeric" maxlength="4" required></div>
+    <% if (cat !== 'car') { %>
+    <div><label>Storage <span class="req">*</span></label><input name="storage" value="<%= val('storage') %>" placeholder="e.g. 256 GB" required></div>
+    <div><label>RAM <span class="req">*</span></label><input name="ram" value="<%= val('ram') %>" placeholder="e.g. 8 GB" required></div>
+    <% } %>
+    <% if (cat === 'laptop') { %><div><label>Processor</label><input name="processor" value="<%= val('processor') %>"></div><% } %>
+  </div>
+</fieldset>
+<fieldset><legend>Unique numbers</legend>
+  <div class="row">
+  <% if (cat === 'car') { %>
+    <div><label>VIN / chassis number <span class="req">*</span></label><input name="vin" value="<%= val('vin') %>" required></div>
+    <div><label>Engine number <span class="req">*</span></label><input name="engine_no" value="<%= val('engine_no') %>" required></div>
+    <div><label>Registration plate <span class="req">*</span></label><input name="plate" value="<%= val('plate') %>" required></div>
+    <div><label>Odometer at intake (km) <span class="req">*</span></label><input name="mileage_intake" value="<%= val('mileage_intake') %>" inputmode="numeric" required></div>
+    <div><label>Fuel level at intake <span class="req">*</span></label><select name="fuel_intake" required><option value=""></option><% ['Empty','Quarter','Half','Three quarters','Full'].forEach(function (f) { %><option <%= val('fuel_intake') === f ? 'selected' : '' %>><%= f %></option><% }) %></select></div>
+  <% } else { %>
+    <% if (cat === 'laptop') { %><div><label>Serial number <span class="req">*</span></label><input name="serial_no" value="<%= val('serial_no') %>" required></div><% } %>
+    <% if (cat === 'phone') { %><div><label>IMEI (dial *#06#) <span class="req">*</span></label><input name="imei" value="<%= val('imei') %>" inputmode="numeric" maxlength="15" required></div><% } %>
+    <div><label>Device password or PIN</label><input name="device_password" autocomplete="off"><div class="hint">Stored encrypted, shown only to the CRO, deleted on return or reset for sale.</div></div>
+  <% } %>
+  </div>
+  <p class="hint">Every number is checked against the lender's flagged (stolen) list. A match blocks the item and alerts the CRO.</p>
+</fieldset>
+<fieldset><legend>Checks before accepting</legend>
+  <div class="checks"><% catDef.intakeChecks.forEach(function (ch) { %><label class="check"><input type="checkbox" name="intake_checks" value="<%= ch %>" <%= has('intake_checks', ch) %>> <%= ch %></label><% }) %></div>
+</fieldset>
+<fieldset><legend>Condition and accessories</legend>
+  <label>Faults noted at intake</label><textarea name="faults"><%= val('faults') %></textarea>
+  <label>Accessories received</label>
+  <div class="checks"><% catDef.accessories.forEach(function (a) { %><label class="check"><input type="checkbox" name="accessories" value="<%= a %>" <%= has('accessories', a) %>> <%= a %></label><% }) %></div>
+</fieldset>
+<fieldset><legend>Proof of ownership</legend>
+  <div class="row">
+    <div><label>Document <span class="req">*</span></label><select name="ownership_doc_type" required><option value=""></option><% catDef.ownership.forEach(function (o) { %><option <%= val('ownership_doc_type') === o ? 'selected' : '' %>><%= o %></option><% }) %></select></div>
+    <div><label>Owner name on the document <span class="req">*</span></label><input name="owner_name" value="<%= val('owner_name', c.given_names + ' ' + c.surname) %>" required><div class="hint">Must match the name on the customer's IDs.</div></div>
+    <div><label>Scan(s) <span class="req">*</span></label><input type="file" name="ownership" accept="image/*,application/pdf" multiple required></div>
+  </div>
+</fieldset>
+<fieldset><legend>Photos</legend>
+  <div class="row">
+    <div><label>At least <%= minPhotos %> photos from all sides <span class="req">*</span></label><input type="file" name="photos" accept="image/*" multiple required capture="environment"></div>
+    <div><label>Photo of the <%= catDef.extraPhoto %> <span class="req">*</span></label><input type="file" name="extra_photo" accept="image/*" required capture="environment"></div>
+  </div>
+</fieldset>
+<fieldset><legend>Custody</legend>
+  <div class="row">
+    <div><label><%= cat === 'car' ? 'Yard bay' : 'Store shelf / bin' %> <span class="req">*</span></label><input name="location" value="<%= val('location') %>" placeholder="<%= cat === 'car' ? 'e.g. Yard bay 4' : 'e.g. Shelf A / Bin 3' %>" required></div>
+    <% if (cat === 'car') { %><div><label>Safe slot for keys and papers <span class="req">*</span></label><input name="safe_location" value="<%= val('safe_location') %>" placeholder="e.g. Safe drawer 2" required></div><% } %>
+  </div>
+  <p class="hint"><%= cat === 'car' ? 'Park the car in the secure yard; keys and papers go in the safe. The owner may not drive, use, move or take anything from the car until the loan is fully paid.' : 'Switch the device off, bag it with its tag and place it in the locked store.' %></p>
+</fieldset>
+<div class="actions"><button class="btn">Receive, tag and store</button></div>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

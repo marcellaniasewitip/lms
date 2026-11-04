@@ -1,0 +1,9 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><div><h1>Archive</h1><div class="muted">Locked, read-only copies of expired loans, kept for at least 7 years (AML/CTF Act 2015 — confirm the exact period with your legal adviser), then permanently deleted.</div></div></div>
+<form class="panel f" method="get" style="display:flex;gap:.5rem;align-items:end"><div style="flex:1"><label>Loan number, customer name, ID number, or the item's serial number, IMEI or VIN</label><input name="q" value="<%= q %>" autofocus></div><button class="btn">Search</button></form>
+<div class="tablewrap"><table><thead><tr><th>Loan</th><th>Customer</th><th>Outcome</th><th>Archived</th><th>How</th><th>Delete after</th><th></th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="7" class="empty">No archived loans found.</td></tr><% } %>
+<% list.forEach(function (a) { const s = JSON.parse(a.snapshot); %><tr><td><a href="/archive/loan/<%= a.loan_id %>"><%= a.loan_no %></a></td><td><%= s.customer.name %> <span class="small muted"><%= s.customer.customer_no %></span></td>
+<td><%- include('../partials/badge', { s: s.loan.status }) %></td><td><%= fts(a.archived_at) %></td><td><%= a.method %><%= a.reason ? ': ' + a.reason : '' %></td><td><%= fd(a.delete_after) %></td><td><a href="/archive/loan/<%= a.loan_id %>/pdf">PDF</a></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/footer') %>

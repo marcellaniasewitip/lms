@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<% const open = c.status === 'in_progress' && is('loan_officer'); const found = lines.filter(function (l) { return l.found; }).length; %>
+<div class="pagehead"><div><h1>Stock count <%= c.period %> — <%= c.branch_name %></h1><div class="muted"><%- include('../partials/badge', { s: c.status }) %> · <%= found %> of <%= lines.length %> items counted</div></div></div>
+<% if (open) { %>
+<form method="post" action="/stock/<%= c.id %>/scan" class="panel f" id="scan" style="display:flex;gap:.5rem;align-items:end"><%- include('../partials/csrf') %><div style="flex:1"><label>Scan item tag</label><input name="tag" data-scan autocomplete="off"></div><button class="btn">Count</button></form>
+<% } %>
+<form method="post" action="/stock/<%= c.id %>/save" class="f"><%- include('../partials/csrf') %>
+<div class="tablewrap"><table><thead><tr><th>Found</th><th>Tag</th><th>Item</th><th>Expected location</th><th>Status</th><th>Note</th></tr></thead><tbody>
+<% lines.forEach(function (l) { %><tr style="<%= !l.found && c.status !== 'in_progress' ? 'background:var(--bad-soft)' : '' %>"><td><input type="checkbox" name="found" value="<%= l.id %>" <%= l.found ? 'checked' : '' %> <%= open ? '' : 'disabled' %> aria-label="found"></td>
+<td><a href="/items/<%= l.item_id %>"><%= l.item_no %></a></td><td><%= l.brand_name %> <%= l.model %> <span class="small muted"><%= l.category %></span></td><td><%= l.expected_location %></td><td><%- include('../partials/badge', { s: l.custody_status }) %></td>
+<td><input name="notes[<%= l.id %>]" value="<%= l.note || '' %>" <%= open ? '' : 'disabled' %>></td></tr><% }) %>
+</tbody></table></div>
+<% if (open) { %><div class="actions"><button class="btn secondary">Save progress</button></div><% } %>
+</form>
+<% if (open) { %><form method="post" action="/stock/<%= c.id %>/submit" data-confirm="Submit the count? Items not ticked are reported missing to the Admin."><%- include('../partials/csrf') %><div class="actions"><button class="btn">Submit count for CRO sign-off</button></div></form><% } %>
+<% if (c.status === 'submitted' && is('cro')) { %><form method="post" action="/stock/<%= c.id %>/signoff" class="panel f"><%- include('../partials/csrf') %><label>CRO note</label><input name="note"><div class="actions"><button class="btn">Sign off count</button></div></form><% } %>
+<% if (c.status === 'signed_off' && is('admin')) { %><form method="post" action="/stock/<%= c.id %>/review" class="panel f"><%- include('../partials/csrf') %><label>Admin review note</label><input name="note"><div class="actions"><button class="btn">Mark reviewed</button></div></form><% } %>
+<% if (c.cro_note || c.admin_note) { %><p class="small">CRO: <%= c.cro_note || '' %> · Admin: <%= c.admin_note || '' %></p><% } %>
+<%- include('../partials/footer') %>
