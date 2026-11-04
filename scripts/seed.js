@@ -66,14 +66,14 @@ const ids = {};
 const people = [
   { key: 'grace', surname: 'Kila', given: 'Grace', dob: '14/05/1990', mobile: '71234501', nid: 'NID20190045501', second: 'EMP-PNGP-4821', lang: 'tpi', occupation: 'Nurse', employer: 'Port Moresby General Hospital' },
   { key: 'peter', surname: 'Wena', given: 'Peter John', dob: '02/11/1984', mobile: '71234502', nid: 'NID20180032202', second: 'NAS-55120931', secondType: 'Superannuation member card', sex: 'Male', occupation: 'Contractor' },
-  { key: 'mary', surname: 'Tau', given: 'Mary', dob: '23/07/1995', mobile: '71234503', network: 'Telikom', nid: 'NID20200071103', second: 'UPNG-2015-3311', secondType: 'Student or institution ID', occupation: 'Student' },
+  { key: 'mary', surname: 'Tau', given: 'Mary', dob: '23/07/1995', mobile: '78234503', nid: 'NID20200071103', second: 'UPNG-2015-3311', secondType: 'Student or institution ID', occupation: 'Student' },
   { key: 'joseph', surname: 'Moi', given: 'Joseph', dob: '09/09/1979', mobile: '71234504', nid: 'NID20170012004', second: 'DL-0098812', secondType: "Driver's licence", sex: 'Male', occupation: 'Driver' },
   { key: 'lucy', surname: 'Parkop', given: 'Lucy', dob: '30/01/1988', mobile: '71234505', nid: 'NID20190088805', second: 'EMP-BSP-1209', occupation: 'Bank teller', employer: 'BSP' },
-  { key: 'thomas', surname: 'Hela', given: 'Thomas', dob: '17/03/1992', mobile: '712345066', network: 'Telikom', nid: 'NID20210044406', second: 'EMP-DIG-7781', sex: 'Male', occupation: 'Technician', employer: 'Digicel PNG' },
+  { key: 'thomas', surname: 'Hela', given: 'Thomas', dob: '17/03/1992', mobile: '75234506', nid: 'NID20210044406', second: 'EMP-DIG-7781', sex: 'Male', occupation: 'Technician', employer: 'Digicel PNG' },
   { key: 'ruth', surname: 'Siune', given: 'Ruth', dob: '05/12/1986', mobile: '71234507', nid: 'NID20180066607', second: 'EMP-ANZ-3021', occupation: 'Clerk' },
-  { key: 'kevin', surname: 'Bai', given: 'Kevin', dob: '11/06/1983', mobile: '81234508', network: 'Vodafone', nid: 'NID20170055508', second: 'DL-0044120', secondType: "Driver's licence", sex: 'Male', occupation: 'Mechanic' },
-  { key: 'anna', surname: 'Gima', given: 'Anna', dob: '21/04/1997', mobile: '71234509', nid: 'NID20220033309', second: 'EMP-TEL-1188', occupation: 'Sales' },
-  { key: 'samuel', surname: 'Nalu', given: 'Samuel', dob: '08/08/1975', mobile: '81234510', network: 'Vodafone', nid: 'NID20160011110', second: 'DL-0012777', secondType: "Driver's licence", sex: 'Male', occupation: 'Businessman', lae: true },
+  { key: 'kevin', surname: 'Bai', given: 'Kevin', dob: '11/06/1983', mobile: '83234508', nid: 'NID20170055508', second: 'DL-0044120', secondType: "Driver's licence", sex: 'Male', occupation: 'Mechanic' },
+  { key: 'anna', surname: 'Gima', given: 'Anna', dob: '21/04/1997', mobile: '76234509', nid: 'NID20220033309', second: 'EMP-TEL-1188', occupation: 'Sales' },
+  { key: 'samuel', surname: 'Nalu', given: 'Samuel', dob: '08/08/1975', mobile: '81234510', nid: 'NID20160011110', second: 'DL-0012777', secondType: "Driver's licence", sex: 'Male', occupation: 'Businessman', lae: true },
 ];
 
 at(0 - 125, () => {
@@ -146,7 +146,7 @@ at(0, () => {
   // A new customer whose IDs the CRO still has to check
   const { id } = customers.create(C(lo, T), {
     surname: 'Kumul', given_names: 'Esther', dob: '12/02/1993', sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean', home_province: 'Manus',
-    home_district: 'Lorengau', home_village: 'Pere', mobile: '81234511', mobile_network: 'Vodafone', addr_province: 'National Capital District', addr_district: 'Moresby South',
+    home_district: 'Lorengau', home_village: 'Pere', mobile: '82234511', addr_province: 'National Capital District', addr_district: 'Moresby South',
     addr_town: 'Boroko', addr_section_lot: 'Section 41, Lot 7', addr_landmark: 'Opposite Boroko Foodworld', residence_proof_type: 'Rental letter', nok_name: 'Paul Kumul',
     nok_relationship: 'Brother', nok_phone: '+675 7222 1111', nok_address: 'Pere village', sms_language: 'en', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
   }, { photoDataUrl: fx.DATA_URL, signatureDataUrl: fx.DATA_URL, residence: [fx.file('rental-letter.png')] });

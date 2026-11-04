@@ -23,8 +23,8 @@
 </fieldset>
 <fieldset><legend>Contact</legend>
   <div class="row">
-    <div><label>Mobile number <span class="req">*</span></label><input name="mobile" value="<%= v('mobile') %>" placeholder="+675 7xxx xxxx" required><div class="hint">Digicel or Telikom: 7xxx xxxx · Vodafone: 8xxx xxxx. Confirmed by SMS code after saving.</div></div>
-    <div><label>Network <span class="req">*</span></label><select name="mobile_network" required><option value=""></option><% ['Digicel','Telikom','Vodafone'].forEach(function (o) { %><option <%= sel('mobile_network', o) %>><%= o %></option><% }) %></select></div>
+    <div><label>Mobile number <span class="req">*</span></label><input name="mobile" value="<%= v('mobile') %>" placeholder="+675 7xxx xxxx" data-network-in required><div class="hint">8 digits. Digicel 70–74, 79 · Telikom 75, 76, 78 · Vodafone 81–83. Confirmed by SMS code after saving.</div></div>
+    <div><label>Network</label><input value="<%= v('mobile_network') %>" data-network-out readonly tabindex="-1" placeholder="Worked out from the number"></div>
     <div><label>Second number</label><input name="second_phone" value="<%= v('second_phone') %>"></div>
     <div><label>Email</label><input name="email" type="email" value="<%= v('email') %>"></div>
     <div><label>SMS language</label><select name="sms_language"><option value="en" <%= sel('sms_language', 'en') %>>English</option><option value="tpi" <%= sel('sms_language', 'tpi') %>>Tok Pisin</option></select></div>

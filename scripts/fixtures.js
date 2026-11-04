@@ -13,7 +13,7 @@ function makeCustomer(svc, lo, cro, today, p) {
   const { id } = customers.create(ctxFor(lo, today), {
     surname: p.surname, given_names: p.given, dob: p.dob, sex: p.sex || 'Female', marital_status: p.marital || 'Married', citizenship: 'Papua New Guinean',
     home_province: p.home || 'Eastern Highlands', home_district: p.district || 'Goroka', home_village: p.village || 'Asaro',
-    mobile: p.mobile, mobile_network: p.network || 'Digicel', email: p.email || '', second_phone: '',
+    mobile: p.mobile, email: p.email || '', second_phone: '',
     addr_province: 'National Capital District', addr_district: p.addrDistrict || 'Moresby North-East', addr_town: p.town || 'Gerehu',
     addr_section_lot: p.lot || 'Section 9, Lot 21', addr_landmark: p.landmark || 'Near Gerehu Stage 2 market', po_box: '',
     residence_proof_type: 'Utility bill', employer: p.employer || '', occupation: p.occupation || 'Teacher', usual_income: p.income || '',

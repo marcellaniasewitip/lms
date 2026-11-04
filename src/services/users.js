@@ -37,7 +37,7 @@ function create(ctx, { username, full_name, role, branch_id, mobile, password })
   if (!full_name) errs.push('Full name is required.');
   if (!['admin', 'loan_officer', 'cro'].includes(role)) errs.push('Each user has exactly one role: Admin, Loan Officer or CRO.');
   if (role !== 'admin' && !branch_id) errs.push('Loan Officers and CROs belong to a branch.');
-  if (!phone.normalize(mobile)) errs.push('A PNG mobile number is needed for the SMS sign-in code: Digicel or Telikom +675 7xxx xxxx, or Vodafone +675 8xxx xxxx.');
+  if (!phone.normalize(mobile)) errs.push('A PNG mobile number is needed for the SMS sign-in code. ' + phone.problem(mobile));
   const pp = passwordProblems(password, username);
   if (pp.length) errs.push('Password needs ' + pp.join(', ') + '.');
   if (db.get().prepare('SELECT 1 FROM users WHERE username = ?').get(username)) errs.push('That username is taken.');
@@ -53,7 +53,7 @@ function update(ctx, id, { full_name, branch_id, mobile, active }) {
   requireRole(ctx, 'admin');
   const u = get(id);
   rule(!(u.id === ctx.user.id && active === false), 'You cannot deactivate your own account.');
-  if (mobile && !phone.normalize(mobile)) throw new RuleError('A PNG mobile number is needed for the SMS sign-in code: Digicel or Telikom +675 7xxx xxxx, or Vodafone +675 8xxx xxxx.');
+  if (mobile && !phone.normalize(mobile)) throw new RuleError('A PNG mobile number is needed for the SMS sign-in code. ' + phone.problem(mobile));
   const after = { full_name: full_name || u.full_name, branch_id: u.role === 'admin' ? (branch_id || null) : (branch_id || u.branch_id), mobile: mobile ? '+675' + phone.normalize(mobile) : u.mobile, active: active === undefined ? u.active : active ? 1 : 0 };
   db.get().prepare('UPDATE users SET full_name = ?, branch_id = ?, mobile = ?, active = ? WHERE id = ?').run(after.full_name, after.branch_id, after.mobile, after.active, id);
   const [o, n] = audit.diff(u, after);

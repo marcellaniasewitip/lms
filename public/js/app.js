@@ -89,6 +89,19 @@
     val.addEventListener('input', upd); val.addEventListener('change', upd); upd();
   }
 
+  // Show the mobile network as the number is typed (prefixes as in src/lib/phone.js).
+  const netIn = document.querySelector('[data-network-in]'), netOut = document.querySelector('[data-network-out]');
+  if (netIn && netOut) {
+    const NETS = { Digicel: ['70', '71', '72', '73', '74', '79'], Telikom: ['75', '76', '78'], Vodafone: ['81', '82', '83'] };
+    const upd = () => {
+      let n = netIn.value.replace(/\D/g, '');
+      if (n.startsWith('675') && n.length === 11) n = n.slice(3);
+      const net = Object.keys(NETS).find((k) => NETS[k].includes(n.slice(0, 2)));
+      netOut.value = n.length === 8 && net ? net : n.length >= 2 && !net ? 'Not a PNG mobile prefix' : '';
+    };
+    netIn.addEventListener('input', upd); upd();
+  }
+
   // Autofocus scan fields (barcode scanners type then press Enter).
   const scan = document.querySelector('[data-scan]');
   if (scan) scan.focus();

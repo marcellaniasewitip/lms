@@ -20,12 +20,13 @@ const RESIDENCE_PROOF = ['Utility bill', 'Rental letter', 'Letter from the ward 
 const REQUIRED = {
   surname: 'Surname', given_names: 'Given names', dob: 'Date of birth', sex: 'Sex', marital_status: 'Marital status',
   citizenship: 'Citizenship', home_province: 'Home province', home_district: 'Home district', home_village: 'Home village',
-  mobile: 'Mobile number', mobile_network: 'Mobile network', addr_province: 'Current address – province',
+  mobile: 'Mobile number', addr_province: 'Current address – province',
   addr_district: 'Current address – district', addr_town: 'Town or suburb', addr_section_lot: 'Section and lot (or settlement/village)',
   addr_landmark: 'Nearest landmark', residence_proof_type: 'Residence proof type', nok_name: 'Next of kin name',
   nok_relationship: 'Next of kin relationship', nok_phone: 'Next of kin phone', nok_address: 'Next of kin village or address',
 };
-const EDITABLE = [...Object.keys(REQUIRED), 'second_phone', 'email', 'po_box', 'employer', 'occupation', 'usual_income',
+// mobile_network is never typed in: it is worked out from the number's prefix.
+const EDITABLE = [...Object.keys(REQUIRED), 'mobile_network', 'second_phone', 'email', 'po_box', 'employer', 'occupation', 'usual_income',
   'bank_name', 'sms_language'];
 
 // PNG mobiles for Digicel, Telikom and Vodafone — the rules live in lib/phone.js.
@@ -46,6 +47,8 @@ function cleanInput(data) {
   if (out.dob !== undefined) out.dob = dates.parse(out.dob);
   if (out.usual_income !== undefined) out.usual_income = out.usual_income === '' ? null : money.parse(out.usual_income);
   if (out.surname) out.surname = out.surname.toUpperCase();
+  if (out.mobile !== undefined) out.mobile_network = phone.networkOf(out.mobile);
+  else delete out.mobile_network;
   return out;
 }
 
@@ -53,8 +56,7 @@ function validate(c, onDate) {
   const errs = [];
   for (const [k, label] of Object.entries(REQUIRED)) if (!c[k]) errs.push(`${label} is required.`);
   if (c.dob && dates.ageOn(c.dob, onDate) < 18) errs.push('The pledger must be 18 or over.');
-  if (c.mobile_network && !phone.NETWORKS[c.mobile_network]) errs.push('Choose the mobile network: Digicel, Telikom or Vodafone.');
-  else if (c.mobile) { const pr = phone.problem(c.mobile, c.mobile_network); if (pr) errs.push(pr); }
+  if (c.mobile) { const pr = phone.problem(c.mobile); if (pr) errs.push(pr); }
   if (c.second_phone && !/^[+\d\s-]{7,15}$/.test(c.second_phone)) errs.push('Second number is not a valid phone number.');
   if (c.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email)) errs.push('Email is not valid.');
   if (c.residence_proof_type && !RESIDENCE_PROOF.includes(c.residence_proof_type)) errs.push('Choose a residence proof type.');
