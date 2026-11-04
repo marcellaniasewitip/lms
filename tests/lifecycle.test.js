@@ -80,6 +80,17 @@ test('expired ID is rejected and under-18 blocked', () => {
   // Staff sign-in numbers follow the same format.
   const sid = users.create(null, { username: 'fmt.test', full_name: 'Format Test', role: 'cro', branch_id: 1, mobile: '(+675) 8312-3456', password: 'Str0ng!Passw0rd' });
   assert.equal(users.get(sid).mobile, '+67583123456');
+  // Only the Admin changes passwords: Loan Officers and CROs cannot, and are never asked to.
+  assert.throws(() => users.changeOwnPassword(C(lo, t), 'Str0ng!Passw0rd', 'N3w!Password99'), /Admin only/);
+  assert.throws(() => users.changeOwnPassword(C(cro, t), 'Str0ng!Passw0rd', 'N3w!Password99'), /Admin only/);
+  const newLo = users.create(C(admin, t), { username: 'new.officer', full_name: 'New Officer', role: 'loan_officer', branch_id: 1, mobile: '(+675) 7212-3456', password: 'Str0ng!Passw0rd' });
+  assert.equal(users.get(newLo).must_change_pw, 0);
+  users.resetPassword(C(admin, t), newLo, 'An0ther!Passw0rd');
+  assert.equal(users.get(newLo).must_change_pw, 0);
+  const newAdmin = users.create(C(admin, t), { username: 'new.admin', full_name: 'New Admin', role: 'admin', mobile: '(+675) 7212-3457', password: 'Str0ng!Passw0rd' });
+  assert.equal(users.get(newAdmin).must_change_pw, 1);
+  users.changeOwnPassword(C(users.get(newAdmin), t), 'Str0ng!Passw0rd', 'N3w!Password99');
+  assert.equal(users.get(newAdmin).must_change_pw, 0);
   assert.throws(() => users.create(null, { username: 'fmt.bad', full_name: 'Bad', role: 'cro', branch_id: 1, mobile: '+67583123456', password: 'Str0ng!Passw0rd' }), rx(/must be written as/));
 });
 

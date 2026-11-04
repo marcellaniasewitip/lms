@@ -18,7 +18,7 @@ const admin = only('admin');
 
 // ---------- users ----------
 r.get('/users', admin, (req, res) => res.render('admin/users', { title: 'Users', list: users.list(), branches: branches() }));
-r.post('/users', admin, (req, res) => { users.create(req.ctx(), req.body); res.flash('success', 'User created. They must change the password at first sign-in.'); res.redirect('/admin/users'); });
+r.post('/users', admin, (req, res) => { users.create(req.ctx(), req.body); res.flash('success', req.body.role === 'admin' ? 'User created. They must choose their own password at first sign-in.' : 'User created. Give them their username and password; only the Admin can change it.'); res.redirect('/admin/users'); });
 r.post('/users/:id', admin, (req, res) => {
   const id = Number(req.params.id);
   if (req.body.action === 'unlock') users.unlock(req.ctx(), id);

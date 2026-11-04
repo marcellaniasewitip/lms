@@ -51,8 +51,10 @@
   <%- L('/admin/system', 'Nightly job & backups') %>
   <%- L('/admin/sms', 'SMS outbox') %>
   <% } %>
+  <% if (is('admin')) { %>
   <h4>Account</h4>
   <%- L('/account/password', 'Change password') %>
+  <% } %>
 </nav>
 <main>
 <% } else { %>

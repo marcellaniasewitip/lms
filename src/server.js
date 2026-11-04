@@ -121,7 +121,7 @@ app.use((req, res, next) => {
 app.use(require('./routes/auth'));
 app.use((req, res, next) => {
   if (!req.user) return res.redirect('/login');
-  if (req.user.must_change_pw && !req.path.startsWith('/account/password')) return res.redirect('/account/password');
+  if (req.user.must_change_pw && req.user.role === 'admin' && !req.path.startsWith('/account/password')) return res.redirect('/account/password');
   next();
 });
 app.use(require('./routes/dashboard'));

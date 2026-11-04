@@ -45,7 +45,8 @@ function create(ctx, { username, full_name, role, branch_id, mobile, password })
   if (errs.length) throw new RuleError('The user cannot be created.', errs);
   const info = db.get().prepare(`INSERT INTO users(username, full_name, role, branch_id, mobile, password_hash, must_change_pw, created_at)
     VALUES (?,?,?,?,?,?,?,?)`).run(username, full_name, role, role === 'admin' ? (branch_id || null) : branch_id, '+675' + phone.parseInput(mobile),
-    bcrypt.hashSync(password, 12), ctx ? 1 : 0, dates.nowIso());
+    // Only Admins choose their own password; Loan Officers and CROs keep the one the Admin assigns.
+    bcrypt.hashSync(password, 12), ctx && role === 'admin' ? 1 : 0, dates.nowIso());
   if (ctx) audit.log(ctx, 'user_create', 'user', info.lastInsertRowid, null, { username, full_name, role, branch_id });
   return info.lastInsertRowid;
 }
@@ -70,10 +71,13 @@ function resetPassword(ctx, id, password) {
   const u = get(id);
   const pp = passwordProblems(password, u.username);
   if (pp.length) throw new RuleError('Password needs ' + pp.join(', ') + '.');
-  db.get().prepare('UPDATE users SET password_hash = ?, must_change_pw = 1, locked = 0, failed_attempts = 0 WHERE id = ?').run(bcrypt.hashSync(password, 12), id);
+  db.get().prepare('UPDATE users SET password_hash = ?, must_change_pw = ?, locked = 0, failed_attempts = 0 WHERE id = ?').run(bcrypt.hashSync(password, 12), u.role === 'admin' ? 1 : 0, id);
   audit.log(ctx, 'user_password_reset', 'user', id);
 }
+// Only an Admin may change a password, including their own. Loan Officers and CROs sign in
+// with the credentials the Admin creates or resets for them.
 function changeOwnPassword(ctx, current, next) {
+  requireRole(ctx, 'admin');
   const u = get(ctx.user.id);
   rule(bcrypt.compareSync(current || '', u.password_hash), 'Current password is wrong.');
   const pp = passwordProblems(next, u.username);

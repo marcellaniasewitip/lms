@@ -34,7 +34,7 @@ r.post('/login/code', (req, res) => {
     req.session.regenerate(() => {
       req.session.userId = u.id;
       req.session.lastSeen = Date.now();
-      res.redirect(u.must_change_pw ? '/account/password' : '/');
+      res.redirect(u.must_change_pw && u.role === 'admin' ? '/account/password' : '/');
     });
   } catch (e) {
     if (!(e instanceof RuleError)) throw e;
@@ -46,12 +46,19 @@ r.post('/logout', (req, res) => {
   if (req.user) require('../lib/audit').log(req.ctx(), 'logout', 'user', req.user.id);
   req.session.destroy(() => res.redirect('/login'));
 });
-r.get('/account/password', (req, res) => {
+// Changing a password is for the Admin only. Loan Officers and CROs use the credentials the
+// Admin assigns; the Admin resets them under Admin → Users.
+function adminOnly(req, res, next) {
   if (!req.user) return res.redirect('/login');
+  if (req.user.role !== 'admin') {
+    return res.status(403).render('error', { title: 'Not allowed', message: 'Only the Admin can change passwords. Ask the Admin if you need your password reset.', status: 403, details: [] });
+  }
+  next();
+}
+r.get('/account/password', adminOnly, (req, res) => {
   res.render('password', { title: 'Change password' });
 });
-r.post('/account/password', (req, res) => {
-  if (!req.user) return res.redirect('/login');
+r.post('/account/password', adminOnly, (req, res) => {
   if (req.body.next !== req.body.confirm) { res.flash('error', 'The new passwords do not match.'); return res.redirect('/account/password'); }
   users.changeOwnPassword(req.ctx(), req.body.current, req.body.next);
   res.flash('success', 'Password changed.');

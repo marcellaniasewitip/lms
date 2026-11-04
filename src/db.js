@@ -273,6 +273,8 @@ function open(file = DB_FILE) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  // Only Admins are asked to choose their own password.
+  db.prepare("UPDATE users SET must_change_pw = 0 WHERE role != 'admin' AND must_change_pw = 1").run();
   // The mobile network follows the number's prefix (Digicel / Telikom / Vodafone).
   const { networkOf } = require('./lib/phone');
   const fix = db.prepare('UPDATE customers SET mobile_network = ? WHERE id = ?');

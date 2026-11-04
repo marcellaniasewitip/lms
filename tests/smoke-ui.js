@@ -39,13 +39,13 @@ async function crawl(page, role, paths) {
   for (const [role, extra] of Object.entries({
     officer: ['/customers/new', '/loans/redeem?ticket=1009', '/payments/unmatched', '/tasks'],
     cro: ['/archive', '/archive/expiring', '/archive/deleted', '/aml', '/admin/audit', '/admin/watchlists'],
-    admin: ['/admin/users', '/admin/branches', '/admin/settings', '/admin/lists', '/admin/system', '/admin/sms', '/admin/audit', '/archive', '/archive/expiring', '/sales', '/payments/reversals', '/aml'],
+    admin: ['/account/password', '/admin/users', '/admin/branches', '/admin/settings', '/admin/lists', '/admin/system', '/admin/sms', '/admin/audit', '/archive', '/archive/expiring', '/sales', '/payments/reversals', '/aml'],
   })) {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     page.on('pageerror', (e) => all.push(`${role} JS error: ${e.message}`));
     await login(page, role);
-    const base = ['/', '/customers', '/loans', '/items', '/payments/refunds', '/stock', '/stock/access', '/reports', '/notifications', '/sales', '/account/password'];
+    const base = ['/', '/customers', '/loans', '/items', '/payments/refunds', '/stock', '/stock/access', '/reports', '/notifications', '/sales'];
     const reports = ['daily', 'portfolio', 'maturity', 'stock', 'forfeitures', 'customer?customer_id=1', 'expiry'].concat(role === 'officer' ? [] : ['risk', 'aml']).map((r) => '/reports/' + r);
     all.push(...await crawl(page, role, [...base, ...extra, ...reports]));
     await page.goto(BASE + '/loans');
@@ -68,6 +68,11 @@ async function crawl(page, role, paths) {
       const r = await page.request.get(`${BASE}/reports/portfolio?format=${fmt}`);
       if (r.status() !== 200) all.push(`${role} export ${fmt}: HTTP ${r.status()}`);
     }
+    // Only the Admin may change passwords: no menu link and no access for Loan Officers and CROs.
+    await page.goto(BASE + '/');
+    const hasLink = (await page.$$('nav.side a[href="/account/password"]')).length > 0;
+    const pw = await page.request.get(`${BASE}/account/password`);
+    if (role === 'admin' ? !hasLink || pw.status() !== 200 : hasLink || pw.status() !== 403) all.push(`${role}: change-password link ${hasLink}, page HTTP ${pw.status()}`);
     console.log(`${role}: crawled ${base.length + extra.length + reports.length + ls.length * 2 + cs.length + is.length} pages`);
     await ctx.close();
   }
