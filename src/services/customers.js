@@ -57,7 +57,8 @@ function validate(c, onDate) {
   for (const [k, label] of Object.entries(REQUIRED)) if (!c[k]) errs.push(`${label} is required.`);
   if (c.dob && dates.ageOn(c.dob, onDate) < 18) errs.push('The pledger must be 18 or over.');
   if (c.mobile) { const pr = phone.problem(c.mobile); if (pr) errs.push(pr); }
-  if (c.second_phone && !/^[+\d\s-]{7,15}$/.test(c.second_phone)) errs.push('Second number is not a valid phone number.');
+  // Second number: any PNG mobile in any format, or another phone (landline) of 7–15 digits.
+  if (c.second_phone && !phone.normalize(c.second_phone) && !(/^[+\d\s().-]+$/.test(c.second_phone) && /^\d{7,15}$/.test(c.second_phone.replace(/\D/g, '')))) errs.push('Second number is not a valid phone number.');
   if (c.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email)) errs.push('Email is not valid.');
   if (c.residence_proof_type && !RESIDENCE_PROOF.includes(c.residence_proof_type)) errs.push('Choose a residence proof type.');
   return errs;

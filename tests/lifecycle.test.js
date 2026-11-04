@@ -62,6 +62,17 @@ test('expired ID is rejected and under-18 blocked', () => {
   const rid = customers.addId(C(lo, t), id, { id_type_id: nid.id, number: 'OLD999', expiry_date: '01/01/2025', name_on_id: 'Ana Young', dob_on_id: '01/01/2000' }, { front: [fx.file()] });
   assert.throws(() => customers.reviewId(C(cro, t), rid, { decision: 'accept', photo_match: true }), rx(/expired on 01\/01\/2025/));
   assert.throws(() => customers.create(C(lo, t), { surname: 'Kid', given_names: 'A', dob: '01/01/2012' }), /fix the customer profile/);
+  // The mobile was entered as 81998888: stored as local digits with its network.
+  assert.deepEqual([customers.get(id).mobile, customers.get(id).mobile_network], ['81998888', 'Vodafone']);
+  // Every common format is accepted for the customer's mobile and second number.
+  for (const [mobile, net] of [['+675 7123 4567', 'Digicel'], ['(+675) 7812-3456', 'Telikom'], ['+67582123456', 'Vodafone']]) {
+    customers.update(C(lo, t), id, { mobile, second_phone: '(+675) 7123-4567' });
+    assert.equal(customers.get(id).mobile_network, net, mobile);
+  }
+  assert.throws(() => customers.update(C(lo, t), id, { mobile: '+675 7712 3456' }), rx(/not a PNG mobile/));
+  // Staff sign-in numbers accept the same formats.
+  const sid = users.create(null, { username: 'fmt.test', full_name: 'Format Test', role: 'cro', branch_id: 1, mobile: '(+675) 8312-3456', password: 'Str0ng!Passw0rd' });
+  assert.equal(users.get(sid).mobile, '+67583123456');
 });
 
 test('stolen item list blocks intake; IMEI must be valid', () => {

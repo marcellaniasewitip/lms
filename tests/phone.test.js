@@ -10,6 +10,11 @@ test('the network comes from the first two digits', () => {
 });
 
 test('accepts common ways of writing the number', () => {
+  const ways = ['+67571234567', '+675 71234567', '+675 7123 4567', '+675 71 234 567', '675 7123 4567', '71234567', '7123 4567',
+    '7123-4567', '(+675) 7123-4567', '+675-7123-4567'];
+  for (const w of ways) assert.equal(phone.normalize(w), '71234567', w);
+  assert.equal(phone.networkOf('+67578123456'), 'Telikom');
+  assert.equal(phone.networkOf('+67583123456'), 'Vodafone');
   assert.equal(phone.normalize('+675 7123 4567'), '71234567');
   assert.equal(phone.normalize('675-7812-3456'), '78123456');
   assert.equal(phone.normalize('81234567'), '81234567');
