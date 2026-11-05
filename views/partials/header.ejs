@@ -18,18 +18,21 @@
 </header>
 <div class="shell">
 <nav class="side">
-  <% const L = (href, label) => `<a href="${href}" class="${(href === '/' ? path === '/' : path.startsWith(href)) ? 'on' : ''}">${label}</a>`; %>
+  <% const SUBS = ['/loans/redeem', '/stock/access', '/archive/expiring', '/archive/deleted'];
+     const isOn = (href) => href === '/' ? path === '/' : path.startsWith(href) && !SUBS.some((sub) => sub !== href && sub.startsWith(href) && path.startsWith(sub));
+     const L = (href, label) => `<a href="${href}" class="${isOn(href) ? 'on' : ''}">${label}</a>`; %>
   <%- L('/', 'Dashboard') %>
   <h4>Counter</h4>
   <%- L('/customers', 'Customers') %>
   <%- L('/loans', 'Loans') %>
-  <% if (is('loan_officer')) { %><%- L('/loans/redeem', 'Redeem (scan ticket)') %><% } %>
+  <% if (is('loan_officer')) { %><%- L('/loans/redeem', 'Redemption') %><% } %>
   <%- L('/items', 'Item store') %>
   <% if (is('loan_officer', 'admin')) { %><%- L('/payments/unmatched', 'Payments to match') %><% } %>
   <%- L('/payments/refunds', 'Refunds & surplus') %>
   <%- L('/payments/reversals', 'Reversals') %>
   <%- L('/tasks', 'Call tasks') %>
   <h4>Custody</h4>
+  <%- L('/bins', 'Bins (Bin #)') %>
   <%- L('/stock', 'Stock counts') %>
   <%- L('/stock/access', 'Store access log') %>
   <%- L('/sales', 'Forfeited items / sales') %>

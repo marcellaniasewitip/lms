@@ -1,6 +1,7 @@
 <%- include('../partials/header') %>
 <div class="pagehead"><div><h1><%= handback ? 'Hand items back' : 'Return item' %> — loan <%= l.loan_no %></h1>
 <div class="muted"><%= c.given_names %> <%= c.surname %> · <%= handback ? STATUS[l.status] + ' application' : 'balance ' + K(owing) %></div></div></div>
+<% if (flash.receiptUrl) { %><p><a class="btn secondary small" href="<%= flash.receiptUrl %>" target="_blank">Print the payment receipt</a></p><% } %>
 <% if (!handback && owing !== 0) { %><div class="alert alert-error">The balance is <%= K(owing) %>. An item is returned only when the balance is K0.00.</div><% } %>
 <form method="post" action="/loans/<%= l.id %>/return?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
 <% if (!handback) { %>
@@ -20,7 +21,8 @@
 </fieldset>
 <fieldset><legend><%= handback ? '2' : '4' %>. Check the item against the intake photos</legend>
   <% lis.forEach(function (i) { %>
-    <h3><%= i.item_no %> — <%= i.brand_name %> <%= i.model %> <span class="muted small"><%= i.location %></span></h3>
+    <h3><%= i.item_no %> — <%= i.brand_name %> <%= i.model %></h3>
+    <div class="alert alert-info" style="font-size:1.1rem">Pull from <strong><%= i.location %></strong><% if (i.safe_location) { %> · keys and papers from <strong><%= i.safe_location %></strong><% } %></div>
     <div class="photos"><% photos(i.item_id).forEach(function (p) { %><a href="/files/<%= p.id %>"><img src="/files/<%= p.id %>" alt="<%= p.kind %>"></a><% }) %></div>
     <% if (i.category === 'car' && !handback) { %><div class="row"><div><label>Odometer now (km) — intake <%= Number(i.mileage_intake).toLocaleString() %> km</label><input name="mileage_<%= i.item_id %>" inputmode="numeric" required></div></div><% } %>
   <% }) %>

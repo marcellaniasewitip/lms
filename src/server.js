@@ -142,6 +142,7 @@ app.use('/payments', require('./routes/payments'));
 app.use('/sales', require('./routes/sales'));
 app.use('/archive', require('./routes/archive'));
 app.use('/stock', require('./routes/stock'));
+app.use('/bins', require('./routes/bins'));
 app.use('/reports', require('./routes/reports'));
 app.use('/aml', require('./routes/aml'));
 app.use('/admin', require('./routes/admin'));

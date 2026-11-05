@@ -45,7 +45,7 @@ async function crawl(page, role, paths) {
     const page = await ctx.newPage();
     page.on('pageerror', (e) => all.push(`${role} JS error: ${e.message}`));
     await login(page, role);
-    const base = ['/', '/customers', '/loans', '/items', '/payments/refunds', '/stock', '/stock/access', '/reports', '/notifications', '/sales'];
+    const base = ['/', '/customers', '/loans', '/items', '/payments/refunds', '/stock', '/stock/access', '/reports', '/notifications', '/sales', '/bins', '/bins?show=used', '/bins/1', '/loans/redeem?ticket=Kila', '/lookup?q=B-001'];
     const reports = ['daily', 'portfolio', 'maturity', 'stock', 'forfeitures', 'customer?customer_id=1', 'expiry'].concat(role === 'officer' ? [] : ['risk', 'aml']).map((r) => '/reports/' + r);
     all.push(...await crawl(page, role, [...base, ...extra, ...reports]));
     await page.goto(BASE + '/loans');

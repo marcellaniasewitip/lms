@@ -1,5 +1,5 @@
 <%- include('../partials/header') %>
-<div class="pagehead"><h1>Loans</h1><% if (is('loan_officer')) { %><a class="btn secondary" href="/loans/redeem">Redeem — scan ticket</a><% } %></div>
+<div class="pagehead"><h1>Loans</h1><% if (is('loan_officer')) { %><a class="btn secondary" href="/loans/redeem">Redemption</a><% } %></div>
 <form class="panel f" method="get"><div class="row">
   <div><label>Status</label><select name="status">
     <option value="">All active-system loans</option><option value="open" <%= st === 'open' ? 'selected' : '' %>>Released and open</option><option value="applications" <%= st === 'applications' ? 'selected' : '' %>>Applications</option>

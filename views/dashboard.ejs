@@ -1,6 +1,6 @@
 <%- include('partials/header') %>
 <div class="pagehead"><div><h1>Good day, <%= user.full_name.split(' ')[0] %></h1><div class="muted"><%= ROLE_LABEL[user.role] %> dashboard · <%= fd(today) %> (Port Moresby time)</div></div>
-<% if (is('loan_officer')) { %><div class="actions" style="margin:0"><a class="btn" href="/customers/new">Register customer</a><a class="btn secondary" href="/loans/redeem">Redeem — scan ticket</a></div><% } %>
+<% if (is('loan_officer')) { %><div class="actions" style="margin:0"><a class="btn" href="/customers/new">Register customer</a><a class="btn secondary" href="/loans/redeem">Redemption</a></div><% } %>
 </div>
 
 <% if (is('loan_officer')) { %>

@@ -39,10 +39,16 @@ function makeItem(svc, lo, today, customerId, kind, p = {}) {
   const brand = (cat, name) => db.get().prepare('SELECT id FROM brands WHERE category = ? AND name = ?').get(cat, name).id;
   const cat = items.CATEGORIES[kind];
   const base = { category: kind, intake_checks: cat.intakeChecks, owner_name: p.owner, ownership_doc_type: cat.ownership[0], accessories: cat.accessories.slice(0, 2) };
+  // First bin of the right kind with room in it (cars: a yard bay plus a key bin).
+  const bins = require('../src/services/bins');
+  const branchId = db.get().prepare('SELECT branch_id FROM customers WHERE id = ?').get(customerId).branch_id;
+  const free = (k) => (bins.forBranch(branchId, k).find((b) => !b.full && (b.capacity || b.used === 0)) || {}).id;
+  const pick = (k, kindName) => ('bin_id' in p || 'key_bin_id' in p ? p[k] : free(kindName));
+  const binFields = kind === 'car' ? { bin_id: pick('bin_id', 'yard'), key_bin_id: pick('key_bin_id', 'key') } : { bin_id: pick('bin_id', 'store') };
   let data;
-  if (kind === 'phone') data = { ...base, brand_id: brand('phone', p.brand || 'Samsung'), model: p.model || 'Galaxy S23', colour: 'Black', year: p.year || 2023, storage: '256 GB', ram: '8 GB', imei: p.imei, device_password: '4821', location: p.location || 'Shelf A / Bin 3' };
-  if (kind === 'laptop') data = { ...base, brand_id: brand('laptop', p.brand || 'HP'), model: p.model || 'ProBook 450 G9', colour: 'Silver', year: p.year || 2022, storage: '512 GB SSD', ram: '16 GB', processor: 'Intel Core i5', serial_no: p.serial, device_password: 'Pass123', location: p.location || 'Shelf B / Bin 1' };
-  if (kind === 'car') data = { ...base, brand_id: brand('car', p.brand || 'Toyota'), model: p.model || 'Hilux SR5', colour: 'White', year: p.year || 2016, vin: p.vin, engine_no: p.engine, plate: p.plate, mileage_intake: p.km || 142000, fuel_intake: 'Half', location: p.location || 'Yard bay 4', safe_location: 'Safe drawer 2' };
+  if (kind === 'phone') data = { ...base, brand_id: brand('phone', p.brand || 'Samsung'), model: p.model || 'Galaxy S23', colour: 'Black', year: p.year || 2023, storage: '256 GB', ram: '8 GB', imei: p.imei, device_password: '4821', ...binFields };
+  if (kind === 'laptop') data = { ...base, brand_id: brand('laptop', p.brand || 'HP'), model: p.model || 'ProBook 450 G9', colour: 'Silver', year: p.year || 2022, storage: '512 GB SSD', ram: '16 GB', processor: 'Intel Core i5', serial_no: p.serial, device_password: 'Pass123', ...binFields };
+  if (kind === 'car') data = { ...base, brand_id: brand('car', p.brand || 'Toyota'), model: p.model || 'Hilux SR5', colour: 'White', year: p.year || 2016, vin: p.vin, engine_no: p.engine, plate: p.plate, mileage_intake: p.km || 142000, fuel_intake: 'Half', ...binFields };
   return items.intake(ctxFor(lo, today), customerId, data, { sides: files(4, 'side'), extra: [file('screen.png')] }, [file('receipt.png')]);
 }
 

@@ -90,6 +90,9 @@ function seedReferenceData() {
       .run('POM', 'Port Moresby – Waigani', '+675 325 0000', 'waigani@kinapledge.com.pg', 'PO Box 1000, Boroko, NCD',
         'Section 12, Lot 5, Wards Road, Hohola, NCD', now);
   }
+  // Numbered bins (store bins, key bins, yard bays) for any branch that has none.
+  const bins = require('./bins');
+  for (const b of d.prepare('SELECT id FROM branches').all()) bins.seedBranch(b.id);
 }
 
 module.exports = { DEFAULTS, get, all, set, grades, grade, seedReferenceData };

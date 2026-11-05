@@ -60,12 +60,16 @@
     <div><label>Photo of the <%= catDef.extraPhoto %> <span class="req">*</span></label><input type="file" name="extra_photo" accept="image/*" required capture="environment"></div>
   </div>
 </fieldset>
-<fieldset><legend>Custody</legend>
+<fieldset><legend>Bin # — where the item is kept</legend>
   <div class="row">
-    <div><label><%= cat === 'car' ? 'Yard bay' : 'Store shelf / bin' %> <span class="req">*</span></label><input name="location" value="<%= val('location') %>" placeholder="<%= cat === 'car' ? 'e.g. Yard bay 4' : 'e.g. Shelf A / Bin 3' %>" required></div>
-    <% if (cat === 'car') { %><div><label>Safe slot for keys and papers <span class="req">*</span></label><input name="safe_location" value="<%= val('safe_location') %>" placeholder="e.g. Safe drawer 2" required></div><% } %>
+    <% if (cat === 'car') { %>
+    <div><label>Yard bay # <span class="req">*</span></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor('yard'), selected: val('bin_id'), required: true, placeholder: 'Choose the yard bay…' }) %></div>
+    <div><label>Key bin # (keys and papers, in the safe) <span class="req">*</span></label><%- include('../partials/binselect', { name: 'key_bin_id', list: binsFor('key'), selected: val('key_bin_id'), required: true, placeholder: 'Choose the key bin…' }) %></div>
+    <% } else { %>
+    <div><label>Bin # <span class="req">*</span></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor('store'), selected: val('bin_id'), required: true, placeholder: 'Choose the bin…' }) %></div>
+    <% } %>
   </div>
-  <p class="hint"><%= cat === 'car' ? 'Park the car in the secure yard; keys and papers go in the safe. The owner may not drive, use, move or take anything from the car until the loan is fully paid.' : 'Switch the device off, bag it with its tag and place it in the locked store.' %></p>
+  <p class="hint"><%= cat === 'car' ? 'Park the car in the yard bay chosen and put the keys and papers in the key bin in the safe. The owner may not drive, use, move or take anything from the car until the loan is fully paid.' : 'Switch the device off, bag it with its tag and put it in the bin chosen in the locked store.' %> Full bins cannot be chosen. The Admin adds bins under Bins.</p>
 </fieldset>
 <div class="actions"><button class="btn">Receive, tag and store</button></div>
 </form>

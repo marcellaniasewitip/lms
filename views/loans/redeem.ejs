@@ -1,19 +1,52 @@
 <%- include('../partials/header') %>
-<div class="pagehead"><h1>Redeem — scan the pledge ticket</h1></div>
+<div class="pagehead"><div><h1>Redemption</h1><div class="muted">Scan the barcode on the pawn ticket, or type the ticket number, customer name or mobile.</div></div></div>
 <form class="panel f" method="get" style="display:flex;gap:.5rem;align-items:end">
-  <div style="flex:1"><label>Ticket barcode / contract number</label><input name="ticket" value="<%= query.ticket || '' %>" data-scan autocomplete="off"></div><button class="btn">Look up</button>
+  <div style="flex:1"><label>Ticket # / customer name / mobile</label><input name="ticket" value="<%= q %>" data-scan autocomplete="off"></div><button class="btn">Find</button>
 </form>
-<% if (notFound) { %><div class="alert alert-error">No active loan with that ticket number.</div><% } %>
-<% if (loan) { %>
+<% if (notFound) { %><div class="alert alert-error">No open pawn ticket found for "<%= q %>".</div><% } %>
+
+<% if (matches.length) { %>
+<div class="panel"><h2 style="margin-top:0">Open tickets</h2>
+<table><tr><th>Ticket #</th><th>Customer</th><th>Status</th><th>Due</th><th class="num">Payoff today</th><th></th></tr>
+<% matches.forEach(function (m) { %><tr><td><strong><%= m.loan_no %></strong></td><td><%= m.customer_name %> <span class="small muted"><%= m.customer_no %></span></td><td><%- include('../partials/badge', { s: m.status }) %></td><td><%= fd(m.maturity_date) %></td><td class="num"><%= K(m.owing) %></td>
+<td><a class="btn small" href="/loans/redeem?ticket=<%= m.loan_no %>">Select</a></td></tr><% }) %></table></div>
+<% } %>
+
+<% if (loan) { const now = loan.principal_owing + loan.interest_owing + loan.fees_owing; const open = ['active','in_grace'].includes(loan.status); %>
+<div class="grid g2">
 <div class="panel">
-  <h2 style="margin-top:0">Loan <a href="/loans/<%= loan.id %>"><%= loan.loan_no %></a> — <%= c.given_names %> <%= c.surname %> <%- include('../partials/badge', { s: loan.status }) %></h2>
-  <% if (ticket && ticket.status === 'cancelled') { %><div class="alert alert-error">This ticket was cancelled.</div><% } %>
-  <% if (ticket && ticket.status === 'expired') { %><div class="alert alert-warn">Ticket EXPIRED — not redeemed by the redemption date <%= fd(loan.maturity_date) %>.</div><% } %>
-  <% if (['active','in_grace','paid'].includes(loan.status)) { const now = loan.principal_owing + loan.interest_owing + loan.fees_owing; %>
-  <p>Amount to collect the item today</p><div class="balance"><%= K(now) %></div>
-  <p class="small muted">A lesser amount is payable when redeeming before the redemption date. Payment: cash, bank deposit or mobile banking transfer (no cheques or credit cards unless agreed). Several items on one ticket are redeemed together.</p>
-  <div class="actions"><a class="btn" href="/loans/<%= loan.id %>"><%= loan.status === 'paid' ? 'Return item' : 'Take payment' %></a></div>
-  <% } else { %><p>This loan is <%= STATUS[loan.status] %>; it cannot be redeemed.</p><% } %>
+  <div style="display:flex;gap:1rem;align-items:flex-start">
+    <% if (photo) { %><img src="/files/<%= photo.id %>" alt="Customer photo" style="width:96px;height:96px;object-fit:cover;border-radius:4px;border:1px solid var(--line)"><% } %>
+    <div><h2 style="margin:0">Ticket <%= loan.loan_no %> <%- include('../partials/badge', { s: loan.status }) %></h2>
+    <div><a href="/customers/<%= c.id %>"><%= c.given_names %> <%= c.surname %></a> · <%= c.customer_no %> · <%= fmtPhone(c.mobile) %></div>
+    <div class="small muted">Pawned <%= fd(loan.release_date) %> · due <%= fd(loan.maturity_date) %> · grace ends <%= fd(loan.grace_end_date) %> · <%= loan.weekly_rate %>% a week</div></div>
+  </div>
+  <% if (ticket && ticket.status === 'cancelled') { %><div class="alert alert-error" style="margin-top:.6rem">This ticket was cancelled (a replacement was issued).</div><% } %>
+  <% if (ticket && ticket.status === 'expired') { %><div class="alert alert-warn" style="margin-top:.6rem">Ticket EXPIRED — not redeemed by <%= fd(loan.maturity_date) %>. It can still be redeemed until the grace end date.</div><% } %>
+  <h3>Items — pull from</h3>
+  <table><tr><th>Bin #</th><th>Item</th><th>Tag</th></tr>
+  <% lis.forEach(function (i) { %><tr><td style="font-size:1.15rem;font-weight:800;white-space:nowrap"><% if (i.bin_id) { %><a href="/bins/<%= i.bin_id %>"><%= i.location %></a><% } else { %><%= i.location %><% } %><% if (i.safe_location) { %><div class="small">keys: <%= i.safe_location %></div><% } %></td>
+  <td><%= i.brand_name %> <%= i.model %> <span class="small muted"><%= i.category %></span></td><td><%= i.item_no %></td></tr><% }) %></table>
+  <p class="small muted">Items pledged on one ticket are redeemed together. The customer must show one of the same IDs: <%= ids.map(function (x) { return x.type_name + ' ending ' + x.number_last4; }).join(', ') %>.</p>
+</div>
+<div class="panel">
+  <% if (open || loan.status === 'paid') { %>
+  <div class="l muted">Payoff today (amount to collect the item)</div><div class="balance"><%= K(now) %></div>
+  <table class="small" style="margin:.4rem 0 1rem"><tr><td>Principal</td><td class="num"><%= K(loan.principal_owing) %></td></tr><tr><td>Interest</td><td class="num"><%= K(loan.interest_owing) %></td></tr><tr><td>Fees</td><td class="num"><%= K(loan.fees_owing) %></td></tr></table>
+  <% } %>
+  <% if (open && is('loan_officer')) { %>
+  <form method="post" action="/loans/<%= loan.id %>/payments" class="f"><%- include('../partials/csrf') %><input type="hidden" name="redeem" value="1">
+    <div class="row"><div><label>Amount received (K)</label><input name="amount" value="<%= (now / 100).toFixed(2) %>" inputmode="decimal" required></div>
+    <div><label>Paid by</label><select name="channel"><% Object.entries(CHANNELS).forEach(function ([k, v]) { %><option value="<%= k %>"><%= v %></option><% }) %></select></div>
+    <div><label>Reference (bank / mobile)</label><input name="reference"></div></div>
+    <div class="actions"><button class="btn">Take payment &amp; redeem</button><a class="btn secondary" href="/loans/<%= loan.id %>">Open the loan</a></div>
+    <p class="hint">Paying the full payoff takes you straight to the item return (ID check, signature, release slip). A smaller amount is posted as a part payment with a receipt. No cheques or credit cards unless agreed.</p>
+  </form>
+  <% } else if (loan.status === 'paid' && is('loan_officer')) { %>
+  <div class="alert alert-success">Paid in full — the item is waiting to be collected.</div>
+  <a class="btn" href="/loans/<%= loan.id %>/return">Return item</a>
+  <% } else if (!open) { %><p>This ticket is <%= STATUS[loan.status] %>; it cannot be redeemed.</p><% } %>
+</div>
 </div>
 <% } %>
 <%- include('../partials/footer') %>

@@ -40,6 +40,8 @@ r.post('/tasks/:id/done', (req, res) => {
 r.get('/lookup', (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.redirect('/');
+  const bin = require('../services/bins').findByText(req.user.role === 'admin' ? null : req.user.branch_id, q);
+  if (bin) return res.redirect(`/bins/${bin.id}`);
   const it = items.byTag(q);
   if (it) return res.redirect(`/items/${it.id}`);
   const l = loans.byNo(q.split('/')[0]);

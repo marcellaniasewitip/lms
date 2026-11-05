@@ -20,7 +20,7 @@ r.get('/', (req, res) => {
   if (status === 'held') where.push("i.custody_status IN ('in_store','for_sale','missing')");
   else if (items.CUSTODY_LABEL[status]) { where.push('i.custody_status = @s'); args.s = status; }
   if (req.query.category) { where.push('i.category = @c'); args.c = req.query.category; }
-  if (req.query.q) { where.push('(i.item_no LIKE @q OR i.vin LIKE @q OR i.serial_no LIKE @q OR i.imei LIKE @q OR i.plate LIKE @q OR i.model LIKE @q)'); args.q = `%${String(req.query.q).toUpperCase()}%`; }
+  if (req.query.q) { where.push('(i.item_no LIKE @q OR i.vin LIKE @q OR i.serial_no LIKE @q OR i.imei LIKE @q OR i.plate LIKE @q OR i.model LIKE @q OR UPPER(i.location) LIKE @q OR UPPER(i.safe_location) LIKE @q)'); args.q = `%${String(req.query.q).toUpperCase()}%`; }
   const list = db.get().prepare(`SELECT i.*, c.given_names || ' ' || c.surname AS customer_name, b.name AS branch_name, l.loan_no, l.status AS loan_status
     FROM items i JOIN customers c ON c.id = i.customer_id JOIN branches b ON b.id = i.branch_id LEFT JOIN loans l ON l.id = i.current_loan_id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY i.location, i.item_no LIMIT 500`).all(args);
@@ -34,7 +34,9 @@ r.get('/:id', (req, res) => {
   // The decrypted device password is shown once, right after the CRO asks for it.
   const password = req.session.revealed && req.session.revealed[it.id];
   delete req.session.revealed;
+  const bins = require('../services/bins');
   res.render('items/view', {
+    binsFor: (kind) => bins.forBranch(it.branch_id, kind),
     title: `Item ${it.item_no}`, it, branchName: (db.get().prepare('SELECT name FROM branches WHERE id = ?').get(it.branch_id) || {}).name, c: customers.get(it.customer_id), cat: items.CATEGORIES[it.category], movements: items.movements(it.id),
     photos: files.list('item', it.id), viewings: items.viewings(it.id), loans: loansFor.filter((l) => !(l.archived && req.user.role === 'loan_officer')),
     password, minPhotos: require('../services/settings').get('min_item_photos'),
@@ -74,7 +76,7 @@ r.post('/:id/reintake', only('loan_officer'), (req, res) => {
   res.redirect(`/items/${req.params.id}`);
 });
 r.post('/:id/found', only('cro'), (req, res) => {
-  require('../services/stock').markFound(req.ctx(), Number(req.params.id), req.body.location);
+  require('../services/stock').markFound(req.ctx(), Number(req.params.id), req.body.bin_id);
   res.flash('success', 'Item marked as found.');
   res.redirect(`/items/${req.params.id}`);
 });

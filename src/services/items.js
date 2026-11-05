@@ -9,6 +9,7 @@ const { requireRole, checkBranch, today } = require('../lib/ctx');
 const files = require('./files');
 const notify = require('./notify');
 const settings = require('./settings');
+const bins = require('./bins');
 
 const CATEGORIES = {
   car: {
@@ -97,7 +98,6 @@ function validateIntake(data, photos, ownershipScans) {
     if (data.vin && normalizeNumber(data.vin).length < 6) errs.push('VIN / chassis number looks too short.');
     if (!data.mileage_intake || !/^\d+$/.test(String(data.mileage_intake))) errs.push('Odometer reading (km) at intake is required.');
     if (!data.fuel_intake) errs.push('Fuel level at intake is required.');
-    if (!data.safe_location) errs.push('Record the safe slot where the keys and papers are kept.');
   } else {
     if (!data.storage) errs.push('Storage is required.');
     if (!data.ram) errs.push('RAM is required.');
@@ -115,7 +115,8 @@ function validateIntake(data, photos, ownershipScans) {
   const min = settings.get('min_item_photos');
   if (!photos.sides || photos.sides.length < min) errs.push(`At least ${min} photos from all sides are required.`);
   if (!photos.extra || !photos.extra.length) errs.push(`A photo of the ${cat.extraPhoto} is required.`);
-  if (!data.location) errs.push(data.category === 'car' ? 'Yard bay is required.' : 'Store shelf or bin is required.');
+  if (!data.bin_id) errs.push(data.category === 'car' ? 'Choose the yard bay number for the car.' : 'Choose the bin number the item goes into.');
+  if (data.category === 'car' && !data.key_bin_id) errs.push('Choose the key bin number for the car keys and papers.');
   return { errs, brand, cat, year };
 }
 
@@ -143,29 +144,32 @@ function intake(ctx, customerId, data, photos = {}, ownershipScans = []) {
   }
   const held = alreadyHeld(nums);
   if (held.length) throw new RuleError('This item is already in custody.', held);
+  const bin = bins.checkFree(Number(data.bin_id), { branchId: c.branch_id, kind: data.category === 'car' ? 'yard' : 'store' });
+  const keyBin = data.category === 'car' ? bins.checkFree(Number(data.key_bin_id), { branchId: c.branch_id, kind: 'key' }) : null;
   const d = db.get();
   return d.transaction(() => {
     const ts = dates.nowIso();
     const info = d.prepare(`INSERT INTO items(item_no, customer_id, branch_id, category, brand_id, brand_name, model, colour, year, storage, ram, processor,
       vin, engine_no, plate, serial_no, imei, device_password_enc, faults, accessories, intake_checks, owner_name, ownership_doc_type,
-      mileage_intake, fuel_intake, custody_status, location, safe_location, received_by, date_in, created_at)
+      mileage_intake, fuel_intake, custody_status, location, safe_location, bin_id, key_bin_id, received_by, date_in, created_at)
       VALUES (@item_no, @customer_id, @branch_id, @category, @brand_id, @brand_name, @model, @colour, @year, @storage, @ram, @processor,
       @vin, @engine_no, @plate, @serial_no, @imei, @pw, @faults, @accessories, @checks, @owner_name, @ownership_doc_type,
-      @mileage, @fuel, 'in_store', @location, @safe, @uid, @date_in, @ts)`).run({
+      @mileage, @fuel, 'in_store', @location, @safe, @bin_id, @key_bin_id, @uid, @date_in, @ts)`).run({
       ...rec, item_no: seq.itemNo(), customer_id: customerId, branch_id: c.branch_id,
       pw: data.category === 'car' ? null : encrypt(data.device_password), faults: data.faults || null,
       accessories: JSON.stringify([].concat(data.accessories || [])), checks: JSON.stringify([].concat(data.intake_checks || [])),
       owner_name: data.owner_name.trim(), ownership_doc_type: data.ownership_doc_type,
       mileage: data.category === 'car' ? Number(data.mileage_intake) : null, fuel: data.fuel_intake || null,
-      location: data.location.trim(), safe: data.safe_location || null, uid: ctx.user.id, date_in: today(ctx), ts,
+      location: bins.label(bin), safe: keyBin ? bins.label(keyBin) : null, bin_id: bin.id, key_bin_id: keyBin ? keyBin.id : null,
+      uid: ctx.user.id, date_in: today(ctx), ts,
     });
     const id = info.lastInsertRowid;
     files.storeUploads(photos.sides, { ownerType: 'item', ownerId: id, kind: 'intake_photo', userId: ctx.user.id });
     files.storeUploads(photos.extra, { ownerType: 'item', ownerId: id, kind: data.category === 'car' ? 'odometer_photo' : 'screen_photo', userId: ctx.user.id });
     files.storeUploads(ownershipScans, { ownerType: 'item', ownerId: id, kind: 'ownership', userId: ctx.user.id });
     d.prepare(`INSERT INTO item_movements(item_id, from_location, to_location, from_status, to_status, reason, moved_by, moved_at)
-      VALUES (?,?,?,?,?,?,?,?)`).run(id, null, rec.location || data.location, null, 'in_store', 'Received at intake, tagged and stored', ctx.user.id, ts);
-    audit.log(ctx, 'item_intake', 'item', id, null, { ...rec, location: data.location, customer_id: customerId });
+      VALUES (?,?,?,?,?,?,?,?)`).run(id, null, bins.label(bin) + (keyBin ? `; keys in ${bins.label(keyBin)}` : ''), null, 'in_store', 'Received at intake, tagged and put in its bin', ctx.user.id, ts);
+    audit.log(ctx, 'item_intake', 'item', id, null, { ...rec, bin: bin.bin_no, key_bin: keyBin && keyBin.bin_no, customer_id: customerId });
     return id;
   })();
 }
@@ -175,24 +179,35 @@ function movements(itemId) {
     WHERE item_id = ? ORDER BY m.id`).all(itemId);
 }
 
-function recordMovement(ctx, item, { to_location, to_status, reason, safe_location }) {
+// Records a move. With to_bin_id / to_key_bin_id the item goes into those bins; when it leaves
+// the lender (returned, handed back, sold) its bins are freed.
+function recordMovement(ctx, item, { to_location, to_status, reason, safe_location, to_bin_id, to_key_bin_id }) {
   const d = db.get();
+  const status = to_status ?? item.custody_status;
+  const leaving = ['returned', 'handed_back', 'sold'].includes(status);
+  let binId = leaving ? null : item.bin_id, keyBinId = leaving ? null : item.key_bin_id;
+  let location = to_location ?? item.location, safe = leaving ? null : (safe_location ?? item.safe_location);
+  if (to_bin_id) { const b = bins.get(to_bin_id); binId = b.id; location = bins.label(b); }
+  if (to_key_bin_id) { const b = bins.get(to_key_bin_id); keyBinId = b.id; safe = bins.label(b); }
+  const fromText = item.location + (item.safe_location ? `; keys in ${item.safe_location}` : '');
+  const toText = location + (safe ? `; keys in ${safe}` : '');
   d.prepare(`INSERT INTO item_movements(item_id, from_location, to_location, from_status, to_status, reason, moved_by, moved_at)
-    VALUES (?,?,?,?,?,?,?,?)`).run(item.id, item.location, to_location ?? item.location, item.custody_status, to_status ?? item.custody_status,
-    reason, ctx.user ? ctx.user.id : null, dates.nowIso());
-  d.prepare('UPDATE items SET location = ?, custody_status = ?, safe_location = COALESCE(?, safe_location) WHERE id = ?')
-    .run(to_location ?? item.location, to_status ?? item.custody_status, safe_location || null, item.id);
-  audit.log(ctx, 'item_movement', 'item', item.id, { location: item.location, status: item.custody_status }, { location: to_location ?? item.location, status: to_status ?? item.custody_status, reason });
+    VALUES (?,?,?,?,?,?,?,?)`).run(item.id, fromText, toText, item.custody_status, status, reason, ctx.user ? ctx.user.id : null, dates.nowIso());
+  d.prepare('UPDATE items SET location = ?, custody_status = ?, safe_location = ?, bin_id = ?, key_bin_id = ? WHERE id = ?')
+    .run(location, status, safe, binId, keyBinId, item.id);
+  audit.log(ctx, 'item_movement', 'item', item.id, { location: fromText, status: item.custody_status }, { location: toText, status, reason });
 }
 
-function move(ctx, itemId, { to_location, safe_location, reason }) {
+function move(ctx, itemId, { to_bin_id, to_key_bin_id, reason }) {
   requireRole(ctx, 'loan_officer', 'cro');
   const it = get(itemId);
   checkBranch(ctx, it.branch_id);
   rule(HELD.includes(it.custody_status), 'Only items held by the lender can be moved.');
-  rule(to_location, 'New location is required.');
+  rule(to_bin_id || to_key_bin_id, 'Choose the new bin number.');
   rule(reason, 'Give a reason for the move.');
-  recordMovement(ctx, it, { to_location: to_location.trim(), reason, safe_location });
+  if (to_bin_id) bins.checkFree(Number(to_bin_id), { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
+  if (to_key_bin_id) { rule(it.category === 'car', 'Only cars have a key bin.'); bins.checkFree(Number(to_key_bin_id), { branchId: it.branch_id, kind: 'key', itemId: it.id }); }
+  recordMovement(ctx, it, { to_bin_id: to_bin_id ? Number(to_bin_id) : null, to_key_bin_id: to_key_bin_id ? Number(to_key_bin_id) : null, reason });
 }
 
 // Device password: encrypted, shown only to the CRO, every view logged.
@@ -222,7 +237,7 @@ function viewings(itemId) {
 }
 
 // Repeat loan: an item collected after redemption is brought back and taken in again.
-function reIntake(ctx, itemId, { location, safe_location, mileage_intake, fuel_intake }, photos = {}) {
+function reIntake(ctx, itemId, { bin_id, key_bin_id, mileage_intake, fuel_intake }, photos = {}) {
   requireRole(ctx, 'loan_officer');
   const it = get(itemId);
   checkBranch(ctx, it.branch_id);
@@ -231,18 +246,21 @@ function reIntake(ctx, itemId, { location, safe_location, mileage_intake, fuel_i
   const min = settings.get('min_item_photos');
   if (!photos.sides || photos.sides.length < min) errs.push(`At least ${min} new photos from all sides are required.`);
   if (!photos.extra || !photos.extra.length) errs.push(`A new photo of the ${CATEGORIES[it.category].extraPhoto} is required.`);
-  if (!location) errs.push('Store location is required.');
+  if (!bin_id) errs.push(it.category === 'car' ? 'Choose the yard bay number.' : 'Choose the bin number.');
+  if (it.category === 'car' && !key_bin_id) errs.push('Choose the key bin number for the keys and papers.');
   if (it.category === 'car' && !/^\d+$/.test(String(mileage_intake || ''))) errs.push('Odometer reading is required.');
   if (errs.length) throw new RuleError('The item cannot be taken in again yet.', errs);
   const stolen = stolenHits(uniqueNumbers(it));
   if (stolen.length) throw new RuleError('This item is blocked.', stolen);
+  bins.checkFree(Number(bin_id), { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
+  if (it.category === 'car') bins.checkFree(Number(key_bin_id), { branchId: it.branch_id, kind: 'key', itemId: it.id });
   db.get().transaction(() => {
     db.get().prepare(`UPDATE items SET returned_at = NULL, returned_to = NULL, return_id_shown = NULL, return_mileage = NULL, return_note = NULL,
       current_loan_id = NULL, date_in = ?, mileage_intake = COALESCE(?, mileage_intake), fuel_intake = COALESCE(?, fuel_intake), received_by = ? WHERE id = ?`)
       .run(today(ctx), it.category === 'car' ? Number(mileage_intake) : null, fuel_intake || null, ctx.user.id, itemId);
     files.storeUploads(photos.sides, { ownerType: 'item', ownerId: itemId, kind: 'intake_photo', userId: ctx.user.id, caption: `Re-intake ${today(ctx)}` });
     files.storeUploads(photos.extra, { ownerType: 'item', ownerId: itemId, kind: it.category === 'car' ? 'odometer_photo' : 'screen_photo', userId: ctx.user.id, caption: `Re-intake ${today(ctx)}` });
-    recordMovement(ctx, get(itemId), { to_location: location, to_status: 'in_store', reason: 'Taken in again for a new loan', safe_location });
+    recordMovement(ctx, get(itemId), { to_status: 'in_store', reason: 'Taken in again for a new loan', to_bin_id: Number(bin_id), to_key_bin_id: it.category === 'car' ? Number(key_bin_id) : null });
   })();
 }
 

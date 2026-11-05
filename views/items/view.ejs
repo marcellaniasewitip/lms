@@ -27,15 +27,17 @@
 </div>
 <div class="panel"><h2>Custody</h2>
   <dl class="kv small">
-    <dt>Branch</dt><dd><%= branchName %></dd><dt>Location</dt><dd><strong><%= it.location %></strong></dd>
-    <% if (it.safe_location) { %><dt>Keys and papers</dt><dd><%= it.safe_location %> (safe)</dd><% } %>
+    <dt>Branch</dt><dd><%= branchName %></dd>
+    <dt><%= it.category === 'car' ? 'Yard bay #' : 'Bin #' %></dt><dd><% if (it.bin_id) { %><a href="/bins/<%= it.bin_id %>" style="font-size:1.25rem;font-weight:700"><%= it.location %></a><% } else { %><strong><%= it.location %></strong><% } %></dd>
+    <% if (it.category === 'car') { %><dt>Key bin #</dt><dd><% if (it.key_bin_id) { %><a href="/bins/<%= it.key_bin_id %>" style="font-size:1.25rem;font-weight:700"><%= it.safe_location %></a> (keys and papers, in the safe)<% } else { %><%= it.safe_location || '—' %><% } %></dd><% } %>
     <dt>Received</dt><dd><%= fd(it.date_in) %></dd>
     <% if (it.returned_at) { %><dt>Returned</dt><dd><%= fts(it.returned_at) %> to <%= it.returned_to %>, ID shown: <%= it.return_id_shown %><%= it.return_note ? ' — ' + it.return_note : '' %></dd><% } %>
   </dl>
   <% if (held && is('loan_officer', 'cro')) { %>
-  <details class="action" style="margin-top:.8rem"><summary>Move item</summary><div>
+  <details class="action" style="margin-top:.8rem"><summary>Move to another bin</summary><div>
     <form method="post" action="/items/<%= it.id %>/move" class="f"><%- include('../partials/csrf') %>
-      <div class="row"><div><label>New location</label><input name="to_location" required></div><% if (it.category === 'car') { %><div><label>Safe slot (keys/papers)</label><input name="safe_location" value="<%= it.safe_location || '' %>"></div><% } %></div>
+      <div class="row"><div><label>New <%= it.category === 'car' ? 'yard bay #' : 'bin #' %></label><%- include('../partials/binselect', { name: 'to_bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: '', placeholder: 'Keep current' }) %></div>
+      <% if (it.category === 'car') { %><div><label>New key bin #</label><%- include('../partials/binselect', { name: 'to_key_bin_id', list: binsFor('key'), selected: '', placeholder: 'Keep current' }) %></div><% } %></div>
       <label>Reason</label><input name="reason" required><div class="actions"><button class="btn small">Record move</button></div></form></div></details>
   <% } %>
   <% if (it.category === 'car' && held && is('loan_officer', 'cro')) { %>
@@ -44,14 +46,14 @@
     <form method="post" action="/items/<%= it.id %>/viewing" class="f"><%- include('../partials/csrf') %><label>Visitor</label><input name="visitor" value="<%= c.given_names %> <%= c.surname %>" required><label>Note</label><input name="note"><div class="actions"><button class="btn small">Record viewing</button></div></form></div></details>
   <% } %>
   <% if (it.custody_status === 'missing' && is('cro')) { %>
-  <form method="post" action="/items/<%= it.id %>/found" class="f"><%- include('../partials/csrf') %><label>Found at location</label><input name="location" value="<%= it.location %>"><div class="actions"><button class="btn small">Mark as found</button></div></form>
+  <form method="post" action="/items/<%= it.id %>/found" class="f"><%- include('../partials/csrf') %><label>Found — put it in <%= it.category === 'car' ? 'yard bay' : 'bin' %> #</label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: it.bin_id || '', placeholder: 'Same bin as before' }) %><div class="actions"><button class="btn small">Mark as found</button></div></form>
   <% } %>
   <% if (['returned','handed_back'].includes(it.custody_status) && is('loan_officer')) { %>
   <details class="action" style="margin-top:.8rem"><summary>Take in again for a new loan (repeat loan)</summary><div>
     <p class="small muted">A new loan with a new release date. Renewals are not allowed — the item must have been redeemed first.</p>
     <form method="post" action="/items/<%= it.id %>/reintake?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
-      <div class="row"><div><label>Location</label><input name="location" required></div>
-      <% if (it.category === 'car') { %><div><label>Safe slot</label><input name="safe_location"></div><div><label>Odometer (km)</label><input name="mileage_intake" required></div><div><label>Fuel</label><input name="fuel_intake" required></div><% } %></div>
+      <div class="row"><div><label><%= it.category === 'car' ? 'Yard bay #' : 'Bin #' %></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: '', required: true }) %></div>
+      <% if (it.category === 'car') { %><div><label>Key bin #</label><%- include('../partials/binselect', { name: 'key_bin_id', list: binsFor('key'), selected: '', required: true }) %></div><div><label>Odometer (km)</label><input name="mileage_intake" required></div><div><label>Fuel</label><input name="fuel_intake" required></div><% } %></div>
       <div class="row"><div><label>At least <%= minPhotos %> new photos</label><input type="file" name="photos" multiple accept="image/*" required></div><div><label>Photo of the <%= cat.extraPhoto %></label><input type="file" name="extra_photo" accept="image/*" required></div></div>
       <div class="actions"><button class="btn small">Take in again</button></div></form></div></details>
   <% } %>
@@ -66,7 +68,7 @@
   <% loans.forEach(function (l) { %><tr><td><a href="/loans/<%= l.id %>"><%= l.loan_no %></a></td><td><%= l.schedule_no %></td><td><%= l.grade || '—' %></td><td class="num"><%= K(l.assessed_value) %></td><td class="num"><%= K(l.max_loan) %></td><td><%- include('../partials/badge', { s: l.status }) %></td></tr><% }) %></table><% } %>
 </div>
 <div class="panel"><h2>Every movement</h2>
-  <table><tr><th>When</th><th>From</th><th>To</th><th>Status</th><th>Reason</th><th>By</th></tr>
+  <table><tr><th>When</th><th>From (bin)</th><th>To (bin)</th><th>Status</th><th>Reason</th><th>By</th></tr>
   <% movements.forEach(function (m) { %><tr><td class="nowrap"><%= fts(m.moved_at) %></td><td><%= m.from_location || '—' %></td><td><%= m.to_location %></td><td><%= (m.from_status || '') && CUSTODY[m.from_status] + ' → ' %><%= CUSTODY[m.to_status] %></td><td><%= m.reason %></td><td><%= m.by_name || 'system' %></td></tr><% }) %></table>
   <% if (viewings.length) { %><h3>Yard viewings</h3><table><tr><th>When</th><th>Visitor</th><th>Staff present</th><th>Note</th></tr><% viewings.forEach(function (v) { %><tr><td><%= fts(v.at) %></td><td><%= v.visitor %></td><td><%= v.staff_name %></td><td><%= v.note %></td></tr><% }) %></table><% } %>
 </div>

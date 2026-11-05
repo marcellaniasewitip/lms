@@ -101,12 +101,13 @@ function review(ctx, id, note) {
   audit.log(ctx, 'stock_count_review', 'stock_count', id, null, { note });
 }
 // An item marked missing that is later found goes back into the store.
-function markFound(ctx, itemId, location) {
+function markFound(ctx, itemId, binId) {
   requireRole(ctx, 'cro');
   const it = items.get(itemId);
   rule(it.custody_status === 'missing', 'The item is not marked missing.');
   const loan = it.current_loan_id ? db.get().prepare('SELECT status FROM loans WHERE id = ?').get(it.current_loan_id) : null;
-  items.recordMovement(ctx, it, { to_location: location || it.location, to_status: loan && loan.status === 'forfeited' ? 'for_sale' : 'in_store', reason: 'Found after being reported missing' });
+  if (binId) require('./bins').checkFree(Number(binId), { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
+  items.recordMovement(ctx, it, { to_bin_id: binId ? Number(binId) : null, to_status: loan && loan.status === 'forfeited' ? 'for_sale' : 'in_store', reason: 'Found after being reported missing' });
 }
 
 function storeAccess(ctx, { area, action, note }) {

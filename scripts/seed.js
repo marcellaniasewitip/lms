@@ -27,6 +27,7 @@ db.open();
 settings.seedReferenceData();
 const d = db.get();
 d.prepare(`INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES ('LAE','Lae – Top Town','+675 472 0000','lae@kinapledge.com.pg','PO Box 2200, Lae, Morobe','Section 5, Lot 9, Coronation Drive, Top Town, Lae',?)`).run(dates.nowIso());
+require('../src/services/bins').seedBranch(2); // default numbered bins for the Lae branch
 
 const PW = 'Demo#Pass2026';
 const mk = (username, full_name, role, branch_id, mobile) => users.get(users.create(null, { username, full_name, role, branch_id, mobile: require('../src/lib/phone').format(mobile), password: PW }));

@@ -103,6 +103,12 @@ CREATE TABLE IF NOT EXISTS items (
   returned_at TEXT, returned_to TEXT, return_id_shown TEXT, return_mileage INTEGER, return_note TEXT,
   current_loan_id INTEGER, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS bins (
+  id INTEGER PRIMARY KEY, branch_id INTEGER NOT NULL REFERENCES branches(id),
+  kind TEXT NOT NULL CHECK (kind IN ('store','key','yard')), bin_no TEXT NOT NULL,
+  capacity INTEGER, description TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL,
+  UNIQUE(branch_id, kind, bin_no)
+);
 CREATE TABLE IF NOT EXISTS item_movements (
   id INTEGER PRIMARY KEY, item_id INTEGER NOT NULL REFERENCES items(id), from_location TEXT, to_location TEXT,
   from_status TEXT, to_status TEXT, reason TEXT, moved_by INTEGER, moved_at TEXT NOT NULL
@@ -273,6 +279,10 @@ function open(file = DB_FILE) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  // Columns added after the first release.
+  const itemCols = db.prepare('PRAGMA table_info(items)').all().map((c) => c.name);
+  if (!itemCols.includes('bin_id')) db.exec('ALTER TABLE items ADD COLUMN bin_id INTEGER REFERENCES bins(id)');
+  if (!itemCols.includes('key_bin_id')) db.exec('ALTER TABLE items ADD COLUMN key_bin_id INTEGER REFERENCES bins(id)');
   // Only Admins are asked to choose their own password.
   db.prepare("UPDATE users SET must_change_pw = 0 WHERE role != 'admin' AND must_change_pw = 1").run();
   // The mobile network follows the number's prefix (Digicel / Telikom / Vodafone).

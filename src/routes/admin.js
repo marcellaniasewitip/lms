@@ -41,6 +41,7 @@ r.post('/branches', admin, (req, res) => {
   } else {
     const info = db.get().prepare('INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES (?,?,?,?,?,?,?)').run(...fields, dates.nowIso());
     audit.log(req.ctx(), 'branch_create', 'branch', info.lastInsertRowid, null, b);
+    require('../services/bins').seedBranch(info.lastInsertRowid);
   }
   res.flash('success', 'Branch saved.');
   res.redirect('/admin/branches');

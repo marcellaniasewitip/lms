@@ -4,15 +4,15 @@
   <div><label>Show</label><select name="status"><option value="held" <%= status === 'held' ? 'selected' : '' %>>Held by lender</option><% Object.entries(CUSTODY).forEach(function ([k, v]) { %><option value="<%= k %>" <%= status === k ? 'selected' : '' %>><%= v %></option><% }) %><option value="all" <%= status === 'all' ? 'selected' : '' %>>All</option></select></div>
   <div><label>Category</label><select name="category"><option value="">All</option><option value="car" <%= query.category === 'car' ? 'selected' : '' %>>Cars</option><option value="laptop" <%= query.category === 'laptop' ? 'selected' : '' %>>Laptops</option><option value="phone" <%= query.category === 'phone' ? 'selected' : '' %>>Phones</option></select></div>
   <% if (is('admin')) { %><div><label>Branch</label><select name="branch_id"><option value="">All</option><% branches.forEach(function (b) { %><option value="<%= b.id %>" <%= String(query.branch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option><% }) %></select></div><% } %>
-  <div><label>Tag, serial, IMEI, VIN, plate or model</label><input name="q" value="<%= query.q || '' %>"></div>
+  <div><label>Tag, bin #, serial, IMEI, VIN, plate or model</label><input name="q" value="<%= query.q || '' %>"></div>
 </div><div class="actions"><button class="btn">Filter</button></div></form>
 <div class="tablewrap"><table>
-<thead><tr><th>Tag</th><th>Item</th><th>Unique no.</th><th>Customer</th><th>Loan</th><th>Status</th><th>Location</th><th>Branch</th><th>In</th></tr></thead><tbody>
+<thead><tr><th>Tag</th><th>Item</th><th>Unique no.</th><th>Customer</th><th>Loan</th><th>Status</th><th>Bin #</th><th>Branch</th><th>In</th></tr></thead><tbody>
 <% if (!list.length) { %><tr><td colspan="9" class="empty">No items.</td></tr><% } %>
 <% list.forEach(function (i) { %><tr>
 <td><a href="/items/<%= i.id %>"><%= i.item_no %></a></td><td><%= i.brand_name %> <%= i.model %><div class="small muted"><%= i.category %></div></td>
 <td class="mono small"><%= i.vin || i.serial_no || i.imei %><%= i.plate ? ' · ' + i.plate : '' %></td><td><%= i.customer_name %></td>
 <td><% if (i.loan_no) { %><a href="/loans/<%= i.current_loan_id %>"><%= i.loan_no %></a><% } %></td><td><%- include('../partials/badge', { s: i.custody_status }) %></td>
-<td><%= i.location %><%= i.safe_location ? ' · keys: ' + i.safe_location : '' %></td><td><%= i.branch_name %></td><td><%= fd(i.date_in) %></td></tr><% }) %>
+<td class="nowrap"><% if (i.bin_id) { %><a href="/bins/<%= i.bin_id %>"><strong><%= i.location %></strong></a><% } else { %><%= i.location %><% } %><% if (i.safe_location) { %><div class="small"><% if (i.key_bin_id) { %><a href="/bins/<%= i.key_bin_id %>"><%= i.safe_location %></a><% } else { %>keys: <%= i.safe_location %><% } %></div><% } %></td><td><%= i.branch_name %></td><td><%= fd(i.date_in) %></td></tr><% }) %>
 </tbody></table></div>
 <%- include('../partials/footer') %>

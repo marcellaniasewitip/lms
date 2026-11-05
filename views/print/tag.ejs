@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="/static/css/app.css"></head>
 <body style="background:#fff">
 <div class="tag"><img src="/items/<%= it.id %>/tag.png" alt="<%= it.item_no %>"><div><strong><%= it.item_no %></strong></div>
-<div class="s"><%= it.brand_name %> <%= it.model %> · <%= it.location %></div><div class="s"><%= lender %> · in <%= fd(it.date_in) %></div></div>
+<div style="font-size:20px;font-weight:800;margin:4px 0"><%= it.location.toUpperCase() %></div><% if (it.safe_location) { %><div style="font-weight:700"><%= it.safe_location.toUpperCase() %></div><% } %><div class="s"><%= it.brand_name %> <%= it.model %></div><div class="s"><%= lender %> · in <%= fd(it.date_in) %></div></div>
 <p class="noprint"><button class="btn" data-print>Print</button></p>
 <script src="/static/js/app.js"></script>
 </body></html>

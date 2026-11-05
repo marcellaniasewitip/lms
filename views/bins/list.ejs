@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<% const count = function (k) { return list.filter(function (b) { return b.kind === k; }); }; %>
+<div class="pagehead"><div><h1>Bins</h1><div class="muted">Every item held is in a numbered bin: laptops and phones in a <strong>store bin</strong> (B-001…), cars in a <strong>yard bay</strong> (Y-01…) with their keys and papers in a <strong>key bin</strong> in the safe (K-01…). Scan or type a bin number in the search box at the top to open it.</div></div></div>
+<form class="panel f" method="get"><div class="row">
+  <% if (is('admin')) { %><div><label>Branch</label><select name="branch_id"><option value="">All branches</option><% branches.forEach(function (b) { %><option value="<%= b.id %>" <%= branchId === b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select></div><% } %>
+  <div><label>Type</label><select name="kind"><option value="">All</option><% Object.entries(KINDS).forEach(function ([k, d]) { %><option value="<%= k %>" <%= query.kind === k ? 'selected' : '' %>><%= d.label %>s — <%= d.for %></option><% }) %></select></div>
+  <div><label>Show</label><select name="show"><option value="">All bins</option><option value="used" <%= query.show === 'used' ? 'selected' : '' %>>Bins holding items</option><option value="empty" <%= query.show === 'empty' ? 'selected' : '' %>>Empty bins</option></select></div>
+</div><div class="actions"><button class="btn">Show</button></div></form>
+<div class="grid g3" style="margin-bottom:1rem"><% Object.entries(KINDS).forEach(function ([k, d]) { const l = count(k); %>
+  <div class="stat"><div class="l"><%= d.label %>s</div><div class="n"><%= l.filter(function (b) { return b.used; }).length %> / <%= l.length %></div><div class="l">in use · <%= d.for %></div></div><% }) %></div>
+<div class="tablewrap"><table><thead><tr><th>Bin #</th><th>Type</th><% if (is('admin')) { %><th>Branch</th><% } %><th>Description</th><th class="num">Items</th><th class="num">Capacity</th><th>Status</th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="7" class="empty">No bins.</td></tr><% } %>
+<% list.forEach(function (b) { const full = b.capacity && b.used >= b.capacity; %><tr>
+<td><a href="/bins/<%= b.id %>"><strong><%= b.bin_no %></strong></a></td><td><%= KINDS[b.kind].label %></td><% if (is('admin')) { %><td><%= b.branch_name %></td><% } %><td><%= b.description || '' %></td>
+<td class="num"><%= b.used %></td><td class="num"><%= b.capacity || 'no limit' %></td>
+<td><% if (!b.active) { %><span class="badge">closed</span><% } else if (full) { %><span class="badge b-pending">full</span><% } else if (b.used) { %><span class="badge b-active">in use</span><% } else { %><span class="badge b-returned">empty</span><% } %></td></tr><% }) %>
+</tbody></table></div>
+<% if (is('admin')) { %>
+<div class="panel" style="margin-top:1rem"><h2 style="margin-top:0">Add bins</h2>
+<form method="post" action="/bins" class="f"><%- include('../partials/csrf') %><div class="row">
+  <div><label>Branch</label><select name="branch_id" required><% branches.forEach(function (b) { %><option value="<%= b.id %>" <%= branchId === b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select></div>
+  <div><label>Type</label><select name="kind"><% Object.entries(KINDS).forEach(function ([k, d]) { %><option value="<%= k %>"><%= d.label %> (<%= d.prefix %>-…)</option><% }) %></select></div>
+  <div><label>Numbers from</label><input name="from" inputmode="numeric" placeholder="41"></div><div><label>to</label><input name="to" inputmode="numeric" placeholder="60"></div>
+  <div><label>…or one bin number</label><input name="bin_no" placeholder="e.g. B-100 or SAFE-A"></div>
+  <div><label>Capacity (items per bin)</label><input name="capacity" inputmode="numeric" placeholder="blank = no limit"></div>
+  <div><label>Description</label><input name="description" placeholder="e.g. Back room, shelf 3"></div>
+</div><p class="hint">Numbered bins are named with the prefix: store bins B-041…, key bins K-21…, yard bays Y-11…. Key bins and yard bays usually hold one item each (capacity 1).</p>
+<div class="actions"><button class="btn">Add bins</button></div></form></div>
+<% } %>
+<%- include('../partials/footer') %>

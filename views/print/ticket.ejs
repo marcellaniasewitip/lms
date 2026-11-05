@@ -60,10 +60,10 @@
   <h2>Rights and obligations</h2><p><%= t0.rights_obligations %></p>
 
   <h2>Schedule 1 – The goods</h2>
-  <table class="t" style="font-size:11px"><tr style="background:#f2f2f2"><td><strong>Item no.</strong></td><td><strong>Category</strong></td><td><strong>Brand / model</strong></td><td><strong>Specs</strong></td><td><strong>Serial / IMEI / VIN</strong></td><td><strong>Accessories</strong></td><td><strong>Device password</strong></td></tr>
+  <table class="t" style="font-size:11px"><tr style="background:#f2f2f2"><td><strong>Item no.</strong></td><td><strong>Category</strong></td><td><strong>Brand / model</strong></td><td><strong>Specs</strong></td><td><strong>Serial / IMEI / VIN</strong></td><td><strong>Accessories</strong></td><td><strong>Device password</strong></td><% if (copy.startsWith('LENDER')) { %><td><strong>Bin #</strong></td><% } %></tr>
   <% lis.forEach(function (i) { %><tr><td><%= i.schedule_no %><br><span class="small"><%= i.item_no %></span></td><td><%= i.category %></td><td><%= i.brand_name %> <%= i.model %> <%= i.year || '' %> <%= i.colour || '' %></td>
   <td><%= i.category === 'car' ? 'Odometer ' + Number(i.mileage_intake).toLocaleString() + ' km, fuel ' + i.fuel_intake : (i.storage || '') + ' / ' + (i.ram || '') + ' ' + (i.processor || '') %></td>
-  <td><%= i.category === 'car' ? 'VIN ' + i.vin + ', engine ' + i.engine_no + ', plate ' + i.plate : (i.imei ? 'IMEI ' + i.imei : 'S/N ' + i.serial_no) %></td><td><%= JSON.parse(i.accessories || '[]').join(', ') %></td><td><%= i.category === 'car' ? '—' : i.password %></td></tr><% }) %></table>
+  <td><%= i.category === 'car' ? 'VIN ' + i.vin + ', engine ' + i.engine_no + ', plate ' + i.plate : (i.imei ? 'IMEI ' + i.imei : 'S/N ' + i.serial_no) %></td><td><%= JSON.parse(i.accessories || '[]').join(', ') %></td><td><%= i.category === 'car' ? '—' : i.password %></td><% if (copy.startsWith('LENDER')) { %><td><strong><%= i.location %></strong><%= i.safe_location ? '; ' + i.safe_location : '' %></td><% } %></tr><% }) %></table>
 
   <div class="sig"><div>Pledger: <%= c.given_names %> <%= c.surname %></div><div>For the lender: <%= officer %> (Loan Officer)</div><div>Date: <%= fd(fig.release) %></div></div>
 </div>

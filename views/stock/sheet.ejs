@@ -5,9 +5,9 @@
 <form method="post" action="/stock/<%= c.id %>/scan" class="panel f" id="scan" style="display:flex;gap:.5rem;align-items:end"><%- include('../partials/csrf') %><div style="flex:1"><label>Scan item tag</label><input name="tag" data-scan autocomplete="off"></div><button class="btn">Count</button></form>
 <% } %>
 <form method="post" action="/stock/<%= c.id %>/save" class="f"><%- include('../partials/csrf') %>
-<div class="tablewrap"><table><thead><tr><th>Found</th><th>Tag</th><th>Item</th><th>Expected location</th><th>Status</th><th>Note</th></tr></thead><tbody>
+<div class="tablewrap"><table><thead><tr><th>Found</th><th>Tag</th><th>Item</th><th>Expected bin #</th><th>Status</th><th>Note</th></tr></thead><tbody>
 <% lines.forEach(function (l) { %><tr style="<%= !l.found && c.status !== 'in_progress' ? 'background:var(--bad-soft)' : '' %>"><td><input type="checkbox" name="found" value="<%= l.id %>" <%= l.found ? 'checked' : '' %> <%= open ? '' : 'disabled' %> aria-label="found"></td>
-<td><a href="/items/<%= l.item_id %>"><%= l.item_no %></a></td><td><%= l.brand_name %> <%= l.model %> <span class="small muted"><%= l.category %></span></td><td><%= l.expected_location %></td><td><%- include('../partials/badge', { s: l.custody_status }) %></td>
+<td><a href="/items/<%= l.item_id %>"><%= l.item_no %></a></td><td><%= l.brand_name %> <%= l.model %> <span class="small muted"><%= l.category %></span></td><td><strong><%= l.expected_location %></strong></td><td><%- include('../partials/badge', { s: l.custody_status }) %></td>
 <td><input name="notes[<%= l.id %>]" value="<%= l.note || '' %>" <%= open ? '' : 'disabled' %>></td></tr><% }) %>
 </tbody></table></div>
 <% if (open) { %><div class="actions"><button class="btn secondary">Save progress</button></div><% } %>

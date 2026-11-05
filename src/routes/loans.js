@@ -34,17 +34,32 @@ r.get('/', (req, res) => {
 });
 
 // Redemption counter: scan the barcode on the pledge ticket to see today's amount.
+// Redemption counter: scan or type the pawn ticket number (or search by customer name or
+// mobile) to see the payoff today, which bin to pull the item from, and take the payment.
 r.get('/redeem', (req, res) => {
-  let loan = null, notFound = false;
-  if (req.query.ticket) {
-    loan = loans.byNo(String(req.query.ticket).trim().split('/')[0]);
-    if (!loan || loan.archived) { notFound = true; loan = null; } else {
-      checkBranch(req.ctx(), loan.branch_id);
-      if (loans.PAYABLE.includes(loan.status)) loans.sync(req.ctx(), loan.id, { upTo: dates.today() });
-      loan = loans.get(loan.id);
+  const q = String(req.query.ticket || '').trim();
+  let loan = null, notFound = false, matches = [];
+  if (q) {
+    const byTicket = loans.byNo(q.split('/')[0]);
+    if (byTicket && !byTicket.archived) {
+      checkBranch(req.ctx(), byTicket.branch_id);
+      if (loans.PAYABLE.includes(byTicket.status)) loans.sync(req.ctx(), byTicket.id, { upTo: dates.today() });
+      loan = loans.get(byTicket.id);
+    } else {
+      // Not a ticket number: list the open tickets of matching customers.
+      const ids = customers.search(req.ctx(), q).map((c) => c.id);
+      matches = ids.length ? db.get().prepare(`SELECT l.*, c.given_names || ' ' || c.surname AS customer_name, c.customer_no,
+        (l.principal_owing + l.interest_owing + l.fees_owing) AS owing FROM loans l JOIN customers c ON c.id = l.customer_id
+        WHERE l.archived = 0 AND l.status IN ('active','in_grace','paid') AND l.customer_id IN (${ids.join(',')}) ORDER BY l.maturity_date`).all() : [];
+      notFound = !matches.length;
     }
   }
-  res.render('loans/redeem', { title: 'Redeem — scan ticket', loan, notFound, ticket: loan && loans.currentTicket(loan.id), c: loan && customers.get(loan.customer_id) });
+  res.render('loans/redeem', {
+    title: 'Redemption', loan, notFound, matches, q,
+    ticket: loan && loans.currentTicket(loan.id), c: loan && customers.get(loan.customer_id),
+    lis: loan ? loans.loanItems(loan.id) : [], photo: loan && files.list('customer_photo', loan.customer_id)[0],
+    ids: loan ? customers.ids(loan.customer_id).filter((x) => x.status === 'accepted') : [],
+  });
 });
 
 r.get('/new', only('loan_officer'), (req, res) => {
@@ -147,7 +162,13 @@ r.get('/:id/barcode.png', (req, res) => {
 
 r.post('/:id/payments', only('loan_officer'), (req, res) => {
   const pid = loans.postPayment(req.ctx(), Number(req.params.id), req.body);
-  res.flash('success', 'Payment posted.');
+  const l = loans.get(req.params.id);
+  // From the redemption counter: once paid in full, go straight on to pulling the item from its bin.
+  if (req.body.redeem && l.status === 'paid') {
+    req.session.flash = { success: `Paid in full — receipt ${loans.payment(pid).receipt_no}. Now pull the item from its bin and hand it over.`, receiptUrl: `/loans/${l.id}/receipt/${pid}` };
+    return res.redirect(`/loans/${l.id}/return`);
+  }
+  res.flash('success', l.status === 'paid' ? 'Payment posted — paid in full. The item can now be returned.' : 'Payment posted.');
   res.redirect(`/loans/${req.params.id}/receipt/${pid}`);
 });
 r.get('/:id/receipt/:pid', (req, res) => {
