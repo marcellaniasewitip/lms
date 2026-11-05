@@ -54,8 +54,33 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 app.use((req, res, next) => (req.is('multipart/form-data') ? upload.any()(req, res, next) : next()));
 app.use(session({
   store: new SqliteStore(), secret: config.SESSION_SECRET, name: 'lms.sid', resave: false, saveUninitialized: false, rolling: true,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: config.COOKIE_SECURE, maxAge: config.IDLE_MINUTES * 60000 },
+  cookie: { httpOnly: true, sameSite: 'lax', secure: config.COOKIE_SECURE ? 'auto' : false, maxAge: config.IDLE_MINUTES * 60000 },
 }));
+
+// ---------- view helpers (first, so every page, including error pages, has them) ----------
+app.use((req, res, next) => {
+  const flash = req.session.flash || {};
+  delete req.session.flash;
+  const old = flash.old || null;
+  Object.assign(res.locals, {
+    user: null, csrf: '', flash, old, path: req.path, query: req.query, today: dates.today(), dates, money,
+    fd: dates.fmt, fts: dates.fmtTs, K: money.fmt, STATUS: loans.STATUS, CHANNELS: loans.CHANNELS, ROLE_LABEL, CUSTODY: items.CUSTODY_LABEL,
+    lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES,
+    // Phone numbers shown and pre-filled as (+675) 7123-4567; forms check the same format.
+    fmtPhone: (s) => (phone.normalize(s) ? phone.format(s) : s || ''),
+    phonePattern: phone.HTML_PATTERN, phoneFormat: phone.FORMAT_TEXT,
+    val: (name, def = '') => (old && old[name] !== undefined ? old[name] : def ?? ''),
+    oldHas: (name, v, def = false) => {
+      if (!old) return def;
+      const x = old[name];
+      return Array.isArray(x) ? x.includes(v) : v === undefined ? !!x : x === v;
+    },
+    unread: 0, // set once the user is known
+    is: (...roles) => req.user && roles.includes(req.user.role),
+  });
+  res.flash = (kind, message, details) => { req.session.flash = { [kind]: message, details }; };
+  next();
+});
 
 // Files grouped by field name.
 app.use((req, res, next) => {
@@ -70,7 +95,16 @@ app.use((req, res, next) => {
   res.locals.csrf = req.session.csrf;
   if (req.method === 'POST') {
     const t = (req.body && req.body._csrf) || req.query._csrf || req.get('x-csrf-token');
-    if (t !== req.session.csrf) return res.status(403).render('error', { title: 'Form expired', message: 'This form has expired or was sent from elsewhere. Go back, reload the page and try again.', status: 403, user: null, details: [] });
+    if (t !== req.session.csrf) {
+      // An expired or stale sign-in form (the page was open longer than the session lasts):
+      // start again on the login page with a message rather than an error page.
+      if (req.path === '/login' || req.path === '/login/code') {
+        delete req.session.pending;
+        req.session.flash = { error: 'The sign-in page had expired. Please enter your username and password again.', old: { username: req.body.username } };
+        return res.redirect('/login');
+      }
+      return res.status(403).render('error', { title: 'Form expired', message: 'This form has expired or was sent from elsewhere. Go back, reload the page and try again.', status: 403, details: [] });
+    }
   }
   next();
 });
@@ -87,33 +121,9 @@ app.use((req, res, next) => {
     req.session.lastSeen = Date.now();
     req.user = { id: u.id, username: u.username, role: u.role, branch_id: u.branch_id, full_name: u.full_name, must_change_pw: u.must_change_pw };
     res.locals.user = req.user;
+    res.locals.unread = notify.unreadCount(req.user);
   }
   req.ctx = () => ({ user: req.user, ip: req.ip });
-  next();
-});
-
-// ---------- view helpers ----------
-app.use((req, res, next) => {
-  const flash = req.session.flash || {};
-  delete req.session.flash;
-  const old = flash.old || null;
-  Object.assign(res.locals, {
-    flash, old, path: req.path, query: req.query, today: dates.today(), dates, money,
-    fd: dates.fmt, fts: dates.fmtTs, K: money.fmt, STATUS: loans.STATUS, CHANNELS: loans.CHANNELS, ROLE_LABEL, CUSTODY: items.CUSTODY_LABEL,
-    lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES,
-    // Phone numbers shown and pre-filled as (+675) 7123-4567; forms check the same format.
-    fmtPhone: (s) => (phone.normalize(s) ? phone.format(s) : s || ''),
-    phonePattern: phone.HTML_PATTERN, phoneFormat: phone.FORMAT_TEXT,
-    val: (name, def = '') => (old && old[name] !== undefined ? old[name] : def ?? ''),
-    oldHas: (name, v, def = false) => {
-      if (!old) return def;
-      const x = old[name];
-      return Array.isArray(x) ? x.includes(v) : v === undefined ? !!x : x === v;
-    },
-    unread: req.user ? notify.unreadCount(req.user) : 0,
-    is: (...roles) => req.user && roles.includes(req.user.role),
-  });
-  res.flash = (kind, message, details) => { req.session.flash = { [kind]: message, details }; };
   next();
 });
 
@@ -153,7 +163,11 @@ app.use((err, req, res, next) => {
     req.session.flash = { error: message, details, old };
     return res.redirect(req.get('Referer') || '/');
   }
-  res.status(err.status || 500).render('error', { title: 'Error', message, details, status: err.status || 500 });
+  res.status(err.status || 500).render('error', { title: 'Error', message, details, status: err.status || 500 }, (renderErr, html) => {
+    if (!renderErr) return res.send(html);
+    console.error('[error page]', renderErr);
+    res.type('html').send('<!doctype html><meta charset="utf-8"><title>Error</title><p>Something went wrong. <a href="/login">Back to sign in</a></p>');
+  });
 });
 
 if (require.main === module) {

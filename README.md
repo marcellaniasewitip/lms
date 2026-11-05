@@ -28,7 +28,7 @@ node tests/smoke-ui.js         # opens every screen as each role (server must be
 |---|---|
 | `LMS_MASTER_KEY` | 64 hex chars, the AES-256 key for encrypted fields and files. If it is not set, a key is generated in `data/master.key`. **Keep it in a secrets manager and back it up: without it the backups cannot be read.** |
 | `LMS_SESSION_SECRET` | Cookie signing secret |
-| `LMS_COOKIE_SECURE=1` | Secure cookies (use behind HTTPS) |
+| `LMS_COOKIE_SECURE=1` | Secure cookies over HTTPS. Behind a reverse proxy (nginx, Caddy), the proxy must send `X-Forwarded-Proto: https`; without it the cookie is sent as a normal cookie rather than dropped. |
 | `LMS_SHOW_CODES=0` | Hide SMS codes on screen |
 | `LMS_SMS_GATEWAY_URL`, `LMS_SMS_GATEWAY_TOKEN` | HTTP SMS gateway (POST `{to, message}`); without it, SMS are logged in the outbox |
 | `LMS_DATA_DIR`, `LMS_BACKUP_DIR`, `LMS_BACKUP_DIR2` | Database and uploads, plus the two backup locations |

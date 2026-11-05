@@ -17,7 +17,8 @@ r.post('/login', (req, res) => {
     res.redirect('/login/code');
   } catch (e) {
     if (!(e instanceof RuleError)) throw e;
-    res.flash('error', e.message);
+    // Shown on the login page itself; the username stays filled in (never the password).
+    req.session.flash = { error: e.message, old: { username: req.body.username } };
     res.redirect('/login');
   }
 });
@@ -39,6 +40,7 @@ r.post('/login/code', (req, res) => {
   } catch (e) {
     if (!(e instanceof RuleError)) throw e;
     res.flash('error', e.message);
+    if (e.message.includes('locked')) delete req.session.pending;
     res.redirect(e.message.includes('locked') ? '/login' : '/login/code');
   }
 });

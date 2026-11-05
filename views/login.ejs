@@ -5,8 +5,8 @@
   <% if (idle) { %><div class="alert alert-info">You were signed out after <%= idleMinutes %> minutes without activity.</div><% } %>
   <form method="post" action="/login" class="f" autocomplete="off">
     <%- include('partials/csrf') %>
-    <label for="u">Username</label><input id="u" name="username" required autofocus>
-    <label for="p">Password</label><input id="p" name="password" type="password" required>
+    <label for="u">Username</label><input id="u" name="username" value="<%= val('username') %>" required <%= val('username') ? '' : 'autofocus' %>>
+    <label for="p">Password</label><input id="p" name="password" type="password" required <%= val('username') ? 'autofocus' : '' %>>
     <div class="actions"><button class="btn">Continue</button></div>
     <p class="hint">A sign-in code will be sent by SMS to your registered mobile. After 5 wrong attempts the account is locked.</p>
   </form>

@@ -91,9 +91,13 @@ function changeOwnPassword(ctx, current, next) {
 function checkPassword(username, password, ip) {
   const u = db.get().prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim().toLowerCase());
   const ctx = { user: u ? { id: u.id, username: u.username, role: u.role } : null, ip };
-  if (!u || !u.active) { audit.log({ ip }, 'login_failed', 'user', username, null, { reason: 'unknown or inactive' }); throw new RuleError('Wrong username or password.'); }
+  if (!u) { audit.log({ ip }, 'login_failed', 'user', username, null, { reason: 'unknown username' }); throw new RuleError('Wrong username. There is no account with that username.'); }
+  if (!u.active) { audit.log(ctx, 'login_failed', 'user', u.id, null, { reason: 'inactive account' }); throw new RuleError('This account has been deactivated. Ask the Admin.'); }
   if (u.locked) throw new RuleError('This account is locked after too many wrong attempts. Ask the Admin to unlock it.');
-  if (!bcrypt.compareSync(password || '', u.password_hash)) { failed(u, ctx, 'password'); throw new RuleError('Wrong username or password.'); }
+  if (!bcrypt.compareSync(password || '', u.password_hash)) {
+    const left = failed(u, ctx, 'password');
+    throw new RuleError(left > 0 ? `Wrong password. ${left} attempt${left === 1 ? '' : 's'} left before the account is locked.` : 'Wrong password. The account is now locked after too many wrong attempts. Ask the Admin to unlock it.');
+  }
   const code = randomCode(6);
   db.get().prepare('UPDATE users SET failed_attempts = failed_attempts WHERE id = ?').run(u.id);
   notify.sms('mobile_code', { to: u.mobile, language: 'en', userId: u.id, vars: { code } });
@@ -105,13 +109,17 @@ function failed(u, ctx, what) {
   db.get().prepare('UPDATE users SET failed_attempts = ?, locked = ? WHERE id = ?').run(n, lock, u.id);
   audit.log(ctx, lock ? 'account_locked' : 'login_failed', 'user', u.id, null, { attempt: n, what });
   if (lock) notify.inApp({ role: 'admin', title: `Account locked: ${u.username}`, body: `${MAX_LOGIN_ATTEMPTS} wrong sign-in attempts.`, link: '/admin/users' });
+  return MAX_LOGIN_ATTEMPTS - n; // attempts left
 }
 // Step 2 of sign-in: the SMS code.
 function checkCode(userId, code, codeHash, ip) {
   const u = get(userId);
   const ctx = { user: { id: u.id, username: u.username, role: u.role }, ip };
   if (u.locked) throw new RuleError('This account is locked. Ask the Admin to unlock it.');
-  if (sha256(String(code || '').trim() + u.id) !== codeHash) { failed(u, ctx, 'sms code'); throw new RuleError('The code is wrong.'); }
+  if (sha256(String(code || '').trim() + u.id) !== codeHash) {
+    const left = failed(u, ctx, 'sms code');
+    throw new RuleError(left > 0 ? `Wrong SMS code. ${left} attempt${left === 1 ? '' : 's'} left before the account is locked.` : 'Wrong SMS code. The account is now locked after too many wrong attempts. Ask the Admin to unlock it.');
+  }
   db.get().prepare('UPDATE users SET failed_attempts = 0, last_login_at = ? WHERE id = ?').run(dates.nowIso(), u.id);
   audit.log(ctx, 'login', 'user', u.id);
   return get(u.id);
