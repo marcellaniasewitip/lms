@@ -43,6 +43,28 @@ setInterval(() => db.get().prepare('DELETE FROM sessions WHERE expires < ?').run
 const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(config.ROOT, 'views'));
+
+// ---------- version and screens fixed at start-up ----------
+// All page templates are read once, when the server starts, so the running program always uses
+// screens that match its own code. Files updated on disk (git pull) take effect at the next
+// restart; until then the server keeps working with the previous version instead of mixing old
+// code with new screens. Set LMS_DEV=1 to re-read templates on every request while developing.
+const STARTED = new Date().toISOString();
+const VERSION = (() => {
+  try {
+    return require('child_process').execSync('git rev-parse --short HEAD', { cwd: config.ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch { return require('../package.json').version; }
+})();
+if (process.env.LMS_DEV !== '1') {
+  const ejs = require('ejs');
+  const fs = require('fs');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  for (const file of walk(path.join(config.ROOT, 'views')).filter((f) => f.endsWith('.ejs'))) {
+    ejs.cache.set(file, ejs.compile(fs.readFileSync(file, 'utf8'), { filename: file }));
+  }
+  app.set('view cache', true);
+}
+app.get('/health', (req, res) => res.json({ ok: true, version: VERSION, started: STARTED }));
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({
@@ -79,7 +101,7 @@ app.use((req, res, next) => {
   Object.assign(res.locals, {
     user: null, csrf: '', flash, old, path: req.path, query: req.query, today: dates.today(), dates, money,
     fd: dates.fmt, fts: dates.fmtTs, K: money.fmt, STATUS: loans.STATUS, CHANNELS: loans.CHANNELS, ROLE_LABEL, CUSTODY: items.CUSTODY_LABEL,
-    lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES,
+    lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES, appVersion: VERSION, appStarted: STARTED,
     // Phone numbers shown and pre-filled as (+675) 7123-4567; forms check the same format.
     fmtPhone: (s) => (phone.normalize(s) ? phone.format(s) : s || ''),
     phonePattern: phone.HTML_PATTERN, phoneFormat: phone.FORMAT_TEXT,
@@ -191,7 +213,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   require('./services/jobs').schedule();
   require('./services/jobs').catchUp().catch((e) => console.error('[nightly catch-up]', e));
-  app.listen(config.PORT, () => console.log(`Loan Management System on http://localhost:${config.PORT} (Port Moresby date ${dates.fmt(dates.today())})`));
+  app.listen(config.PORT, () => console.log(`Loan Management System version ${VERSION} on http://localhost:${config.PORT} (Port Moresby date ${dates.fmt(dates.today())})`));
 }
 
 module.exports = app;

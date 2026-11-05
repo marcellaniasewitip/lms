@@ -22,6 +22,18 @@ npm test                       # business-rule tests (engine and full lifecycle)
 node tests/smoke-ui.js         # opens every screen as each role (server must be running on demo data)
 ```
 
+## Updating a running server
+
+Pull the new code, install any new packages, then **restart the app** (for example `pm2 restart lms` or `sudo systemctl restart lms`):
+
+```bash
+git pull origin main
+npm install
+pm2 restart lms
+```
+
+The server reads its page templates once, at start-up, so it keeps running the version it started with until it is restarted. The version it is running is shown at the bottom of every page and at `/health`. After an update it should match `git rev-parse --short HEAD`.
+
 ## Production settings (environment)
 
 | Variable | Purpose |
@@ -33,6 +45,7 @@ node tests/smoke-ui.js         # opens every screen as each role (server must be
 | `LMS_SMS_GATEWAY_URL`, `LMS_SMS_GATEWAY_TOKEN` | HTTP SMS gateway (POST `{to, message}`); without it, SMS are logged in the outbox |
 | `LMS_DATA_DIR`, `LMS_BACKUP_DIR`, `LMS_BACKUP_DIR2` | Database and uploads, plus the two backup locations |
 | `PORT` | HTTP port (default 3000) |
+| `LMS_DEV=1` | Development only: re-read page templates on every request |
 
 ## How the spec maps to the code
 
