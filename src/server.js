@@ -16,6 +16,7 @@ const settings = require('./services/settings');
 const notify = require('./services/notify');
 const loans = require('./services/loans');
 const items = require('./services/items');
+const files = require('./services/files');
 const phone = require('./lib/phone');
 
 db.open();
@@ -47,15 +48,28 @@ app.disable('x-powered-by');
 app.use(helmet({
   contentSecurityPolicy: { directives: { 'default-src': ["'self'"], 'img-src': ["'self'", 'data:', 'blob:'], 'style-src': ["'self'", "'unsafe-inline'"], 'script-src': ["'self'"], 'form-action': ["'self'"] } },
   crossOriginEmbedderPolicy: false,
+  // Browsers send the page address within this site only, so a form with a mistake comes back
+  // to the same page with its message and the details already typed.
+  referrerPolicy: { policy: 'same-origin' },
 }));
 app.use('/static', express.static(path.join(config.ROOT, 'public'), { maxAge: '1h' }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 30, fieldSize: 6 * 1024 * 1024 } });
-app.use((req, res, next) => (req.is('multipart/form-data') ? upload.any()(req, res, next) : next()));
 app.use(session({
   store: new SqliteStore(), secret: config.SESSION_SECRET, name: 'lms.sid', resave: false, saveUninitialized: false, rolling: true,
   cookie: { httpOnly: true, sameSite: 'lax', secure: config.COOKIE_SECURE ? 'auto' : false, maxAge: config.IDLE_MINUTES * 60000 },
 }));
+// Uploads are read after the session, so an upload error (for example a file that is too big)
+// can still be shown on the form. Every file is checked before anything is saved.
+app.use((req, res, next) => {
+  if (!req.is('multipart/form-data')) return next();
+  upload.any()(req, res, (err) => {
+    if (err && err.code === 'LIMIT_FILE_SIZE') return next(new RuleError('This file cannot be attached.', ['A file attached is larger than 10 MB. Take the photo again at a lower resolution, or scan at a lower quality, and attach it again.']));
+    if (err) return next(new RuleError('The upload could not be read.', [err.message]));
+    const problems = (req.files || []).map((f) => files.problem(f.originalname, f.buffer)).filter(Boolean);
+    next(problems.length ? new RuleError(problems.length === 1 ? 'This file cannot be attached.' : 'These files cannot be attached.', problems) : undefined);
+  });
+});
 
 // ---------- view helpers (first, so every page, including error pages, has them) ----------
 app.use((req, res, next) => {
@@ -153,17 +167,20 @@ app.use((req, res) => res.status(404).render('error', { title: 'Not found', mess
 // ---------- errors ----------
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  const known = err instanceof RuleError || err instanceof Forbidden || err instanceof NotFound || err.code === 'LIMIT_FILE_SIZE';
-  if (!known) console.error(err);
-  const message = known ? err.message : 'Something went wrong. The error has been logged.';
+  const known = err instanceof RuleError || err instanceof Forbidden || err instanceof NotFound;
+  // Unknown errors get a short reference, printed with the error in the server log.
+  const ref = known ? null : crypto.randomBytes(3).toString('hex').toUpperCase();
+  if (!known) console.error(`[error ref ${ref}] ${req.method} ${req.originalUrl}`, err);
+  const message = known ? err.message : `Something went wrong. The error has been logged with reference ${ref}.`;
   const details = err.details || [];
-  if (req.method === 'POST' && known && !(err instanceof NotFound)) {
+  if (req.method === 'POST' && known && !(err instanceof NotFound) && req.session) {
     const old = { ...req.body };
     delete old._csrf;
     for (const k of Object.keys(old)) if (typeof old[k] === 'string' && old[k].startsWith('data:')) delete old[k];
     req.session.flash = { error: message, details, old };
     return res.redirect(req.get('Referer') || '/');
   }
+  if (!res.locals.lender) res.locals.lender = 'Loan Management System';
   res.status(err.status || 500).render('error', { title: 'Error', message, details, status: err.status || 500 }, (renderErr, html) => {
     if (!renderErr) return res.send(html);
     console.error('[error page]', renderErr);
