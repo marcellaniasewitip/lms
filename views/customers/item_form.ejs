@@ -63,13 +63,13 @@
 <fieldset><legend>Bin # — where the item is kept</legend>
   <div class="row">
     <% if (cat === 'car') { %>
-    <div><label>Yard bay # <span class="req">*</span></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor('yard'), selected: val('bin_id'), required: true, placeholder: 'Choose the yard bay…' }) %></div>
-    <div><label>Key bin # (keys and papers, in the safe) <span class="req">*</span></label><%- include('../partials/binselect', { name: 'key_bin_id', list: binsFor('key'), selected: val('key_bin_id'), required: true, placeholder: 'Choose the key bin…' }) %></div>
+    <div><label>Yard bay # <span class="req">*</span></label><%- include('../partials/bininput', { name: 'bin_no', value: val('bin_no'), required: true, placeholder: 'Type the yard bay, e.g. Y3' }) %></div>
+    <div><label>Key bin # (keys and papers, in the safe) <span class="req">*</span></label><%- include('../partials/bininput', { name: 'key_bin_no', value: val('key_bin_no'), required: true, placeholder: 'Type the key bin, e.g. K-01' }) %></div>
     <% } else { %>
-    <div><label>Bin # <span class="req">*</span></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor('store'), selected: val('bin_id'), required: true, placeholder: 'Choose the bin…' }) %></div>
+    <div><label>Bin # <span class="req">*</span></label><%- include('../partials/bininput', { name: 'bin_no', value: val('bin_no'), required: true, placeholder: 'Type the bin, e.g. C1' }) %></div>
     <% } %>
   </div>
-  <p class="hint"><%= cat === 'car' ? 'Park the car in the yard bay chosen and put the keys and papers in the key bin in the safe. The owner may not drive, use, move or take anything from the car until the loan is fully paid.' : 'Switch the device off, bag it with its tag and put it in the bin chosen in the locked store.' %> Full bins cannot be chosen. The Admin adds bins under Bins.</p>
+  <p class="hint"><%= cat === 'car' ? 'Park the car in the yard bay entered and put the keys and papers in the key bin entered, in the safe. The owner may not drive, use, move or take anything from the car until the loan is fully paid.' : 'Switch the device off, bag it with its tag and put it in the bin entered, in the locked store.' %> Type the number written on the bin, for example C1 or K-01 (capital letters not needed). A new bin number is added to the bin list the first time it is used; a full bin is refused.</p>
 </fieldset>
 <div class="actions"><button class="btn">Receive, tag and store</button></div>
 </form>

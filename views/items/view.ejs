@@ -36,8 +36,8 @@
   <% if (held && is('loan_officer', 'cro')) { %>
   <details class="action" style="margin-top:.8rem"><summary>Move to another bin</summary><div>
     <form method="post" action="/items/<%= it.id %>/move" class="f"><%- include('../partials/csrf') %>
-      <div class="row"><div><label>New <%= it.category === 'car' ? 'yard bay #' : 'bin #' %></label><%- include('../partials/binselect', { name: 'to_bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: '', placeholder: 'Keep current' }) %></div>
-      <% if (it.category === 'car') { %><div><label>New key bin #</label><%- include('../partials/binselect', { name: 'to_key_bin_id', list: binsFor('key'), selected: '', placeholder: 'Keep current' }) %></div><% } %></div>
+      <div class="row"><div><label>New <%= it.category === 'car' ? 'yard bay #' : 'bin #' %></label><%- include('../partials/bininput', { name: 'to_bin_no', placeholder: 'Leave blank to keep ' + it.location }) %></div>
+      <% if (it.category === 'car') { %><div><label>New key bin #</label><%- include('../partials/bininput', { name: 'to_key_bin_no', placeholder: 'Leave blank to keep ' + (it.safe_location || '') }) %></div><% } %></div>
       <label>Reason</label><input name="reason" required><div class="actions"><button class="btn small">Record move</button></div></form></div></details>
   <% } %>
   <% if (it.category === 'car' && held && is('loan_officer', 'cro')) { %>
@@ -46,14 +46,14 @@
     <form method="post" action="/items/<%= it.id %>/viewing" class="f"><%- include('../partials/csrf') %><label>Visitor</label><input name="visitor" value="<%= c.given_names %> <%= c.surname %>" required><label>Note</label><input name="note"><div class="actions"><button class="btn small">Record viewing</button></div></form></div></details>
   <% } %>
   <% if (it.custody_status === 'missing' && is('cro')) { %>
-  <form method="post" action="/items/<%= it.id %>/found" class="f"><%- include('../partials/csrf') %><label>Found — put it in <%= it.category === 'car' ? 'yard bay' : 'bin' %> #</label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: it.bin_id || '', placeholder: 'Same bin as before' }) %><div class="actions"><button class="btn small">Mark as found</button></div></form>
+  <form method="post" action="/items/<%= it.id %>/found" class="f"><%- include('../partials/csrf') %><label>Found — put it in <%= it.category === 'car' ? 'yard bay' : 'bin' %> #</label><%- include('../partials/bininput', { name: 'bin_no', placeholder: 'Leave blank for the same bin' }) %><div class="actions"><button class="btn small">Mark as found</button></div></form>
   <% } %>
   <% if (['returned','handed_back'].includes(it.custody_status) && is('loan_officer')) { %>
   <details class="action" style="margin-top:.8rem"><summary>Take in again for a new loan (repeat loan)</summary><div>
     <p class="small muted">A new loan with a new release date. Renewals are not allowed — the item must have been redeemed first.</p>
     <form method="post" action="/items/<%= it.id %>/reintake?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
-      <div class="row"><div><label><%= it.category === 'car' ? 'Yard bay #' : 'Bin #' %></label><%- include('../partials/binselect', { name: 'bin_id', list: binsFor(it.category === 'car' ? 'yard' : 'store'), selected: '', required: true }) %></div>
-      <% if (it.category === 'car') { %><div><label>Key bin #</label><%- include('../partials/binselect', { name: 'key_bin_id', list: binsFor('key'), selected: '', required: true }) %></div><div><label>Odometer (km)</label><input name="mileage_intake" required></div><div><label>Fuel</label><input name="fuel_intake" required></div><% } %></div>
+      <div class="row"><div><label><%= it.category === 'car' ? 'Yard bay #' : 'Bin #' %></label><%- include('../partials/bininput', { name: 'bin_no', required: true, placeholder: it.category === 'car' ? 'e.g. Y3' : 'e.g. C1' }) %></div>
+      <% if (it.category === 'car') { %><div><label>Key bin #</label><%- include('../partials/bininput', { name: 'key_bin_no', required: true, placeholder: 'e.g. K-01' }) %></div><div><label>Odometer (km)</label><input name="mileage_intake" required></div><div><label>Fuel</label><input name="fuel_intake" required></div><% } %></div>
       <div class="row"><div><label>At least <%= minPhotos %> new photos</label><input type="file" name="photos" multiple accept="image/*" required></div><div><label>Photo of the <%= cat.extraPhoto %></label><input type="file" name="extra_photo" accept="image/*" required></div></div>
       <div class="actions"><button class="btn small">Take in again</button></div></form></div></details>
   <% } %>

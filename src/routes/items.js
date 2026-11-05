@@ -36,7 +36,6 @@ r.get('/:id', (req, res) => {
   delete req.session.revealed;
   const bins = require('../services/bins');
   res.render('items/view', {
-    binsFor: (kind) => bins.forBranch(it.branch_id, kind),
     title: `Item ${it.item_no}`, it, branchName: (db.get().prepare('SELECT name FROM branches WHERE id = ?').get(it.branch_id) || {}).name, c: customers.get(it.customer_id), cat: items.CATEGORIES[it.category], movements: items.movements(it.id),
     photos: files.list('item', it.id), viewings: items.viewings(it.id), loans: loansFor.filter((l) => !(l.archived && req.user.role === 'loan_officer')),
     password, minPhotos: require('../services/settings').get('min_item_photos'),
@@ -76,7 +75,7 @@ r.post('/:id/reintake', only('loan_officer'), (req, res) => {
   res.redirect(`/items/${req.params.id}`);
 });
 r.post('/:id/found', only('cro'), (req, res) => {
-  require('../services/stock').markFound(req.ctx(), Number(req.params.id), req.body.bin_id);
+  require('../services/stock').markFound(req.ctx(), Number(req.params.id), req.body.bin_no);
   res.flash('success', 'Item marked as found.');
   res.redirect(`/items/${req.params.id}`);
 });

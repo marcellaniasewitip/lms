@@ -101,7 +101,7 @@ r.get('/:id/items/new', only('loan_officer'), (req, res) => {
   const c = load(req);
   const cat = items.CATEGORIES[req.query.category] ? req.query.category : null;
   const brands = cat ? db.get().prepare('SELECT * FROM brands WHERE category = ? AND active = 1 ORDER BY name').all(cat) : [];
-  res.render('customers/item_form', { title: 'Receive item', c, cat, catDef: cat && items.CATEGORIES[cat], CATEGORIES: items.CATEGORIES, brands, binsFor: (kind) => require('../services/bins').forBranch(c.branch_id, kind), minPhotos: require('../services/settings').get('min_item_photos') });
+  res.render('customers/item_form', { title: 'Receive item', c, cat, catDef: cat && items.CATEGORIES[cat], CATEGORIES: items.CATEGORIES, brands, minPhotos: require('../services/settings').get('min_item_photos') });
 });
 r.post('/:id/items', only('loan_officer'), (req, res) => {
   const id = items.intake(req.ctx(), Number(req.params.id), req.body, { sides: req.filesOf('photos'), extra: req.filesOf('extra_photo') }, req.filesOf('ownership'));

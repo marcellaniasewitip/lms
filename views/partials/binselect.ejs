@@ -1,4 +1,0 @@
-<select name="<%= name %>" <%= typeof required !== 'undefined' && required ? 'required' : '' %>>
-  <option value=""><%= typeof placeholder !== 'undefined' ? placeholder : 'Choose…' %></option>
-  <% list.forEach(function (b) { %><option value="<%= b.id %>" <%= String(selected) === String(b.id) ? 'selected' : '' %> <%= b.full && String(selected) !== String(b.id) ? 'disabled' : '' %>><%= b.text %></option><% }) %>
-</select>

@@ -115,8 +115,8 @@ function validateIntake(data, photos, ownershipScans) {
   const min = settings.get('min_item_photos');
   if (!photos.sides || photos.sides.length < min) errs.push(`At least ${min} photos from all sides are required.`);
   if (!photos.extra || !photos.extra.length) errs.push(`A photo of the ${cat.extraPhoto} is required.`);
-  if (!data.bin_id) errs.push(data.category === 'car' ? 'Choose the yard bay number for the car.' : 'Choose the bin number the item goes into.');
-  if (data.category === 'car' && !data.key_bin_id) errs.push('Choose the key bin number for the car keys and papers.');
+  if (!String(data.bin_no || '').trim()) errs.push(data.category === 'car' ? 'Enter the yard bay number for the car (for example Y3).' : 'Enter the bin number the item goes into (for example C1).');
+  if (data.category === 'car' && !String(data.key_bin_no || '').trim()) errs.push('Enter the key bin number for the car keys and papers (for example K-01).');
   return { errs, brand, cat, year };
 }
 
@@ -144,10 +144,11 @@ function intake(ctx, customerId, data, photos = {}, ownershipScans = []) {
   }
   const held = alreadyHeld(nums);
   if (held.length) throw new RuleError('This item is already in custody.', held);
-  const bin = bins.checkFree(Number(data.bin_id), { branchId: c.branch_id, kind: data.category === 'car' ? 'yard' : 'store' });
-  const keyBin = data.category === 'car' ? bins.checkFree(Number(data.key_bin_id), { branchId: c.branch_id, kind: 'key' }) : null;
   const d = db.get();
   return d.transaction(() => {
+    // The typed bin numbers: existing bins, or new ones created on first use.
+    const bin = bins.resolve(ctx, data.bin_no, { branchId: c.branch_id, kind: data.category === 'car' ? 'yard' : 'store' });
+    const keyBin = data.category === 'car' ? bins.resolve(ctx, data.key_bin_no, { branchId: c.branch_id, kind: 'key' }) : null;
     const ts = dates.nowIso();
     const info = d.prepare(`INSERT INTO items(item_no, customer_id, branch_id, category, brand_id, brand_name, model, colour, year, storage, ram, processor,
       vin, engine_no, plate, serial_no, imei, device_password_enc, faults, accessories, intake_checks, owner_name, ownership_doc_type,
@@ -198,16 +199,20 @@ function recordMovement(ctx, item, { to_location, to_status, reason, safe_locati
   audit.log(ctx, 'item_movement', 'item', item.id, { location: fromText, status: item.custody_status }, { location: toText, status, reason });
 }
 
-function move(ctx, itemId, { to_bin_id, to_key_bin_id, reason }) {
+function move(ctx, itemId, { to_bin_no, to_key_bin_no, reason }) {
   requireRole(ctx, 'loan_officer', 'cro');
   const it = get(itemId);
   checkBranch(ctx, it.branch_id);
   rule(HELD.includes(it.custody_status), 'Only items held by the lender can be moved.');
-  rule(to_bin_id || to_key_bin_id, 'Choose the new bin number.');
+  const toBin = String(to_bin_no || '').trim(), toKey = String(to_key_bin_no || '').trim();
+  rule(toBin || toKey, 'Type the new bin number.');
   rule(reason, 'Give a reason for the move.');
-  if (to_bin_id) bins.checkFree(Number(to_bin_id), { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
-  if (to_key_bin_id) { rule(it.category === 'car', 'Only cars have a key bin.'); bins.checkFree(Number(to_key_bin_id), { branchId: it.branch_id, kind: 'key', itemId: it.id }); }
-  recordMovement(ctx, it, { to_bin_id: to_bin_id ? Number(to_bin_id) : null, to_key_bin_id: to_key_bin_id ? Number(to_key_bin_id) : null, reason });
+  if (toKey) rule(it.category === 'car', 'Only cars have a key bin.');
+  db.get().transaction(() => {
+    const b = toBin ? bins.resolve(ctx, toBin, { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id }) : null;
+    const k = toKey ? bins.resolve(ctx, toKey, { branchId: it.branch_id, kind: 'key', itemId: it.id }) : null;
+    recordMovement(ctx, it, { to_bin_id: b ? b.id : null, to_key_bin_id: k ? k.id : null, reason });
+  })();
 }
 
 // Device password: encrypted, shown only to the CRO, every view logged.
@@ -237,7 +242,7 @@ function viewings(itemId) {
 }
 
 // Repeat loan: an item collected after redemption is brought back and taken in again.
-function reIntake(ctx, itemId, { bin_id, key_bin_id, mileage_intake, fuel_intake }, photos = {}) {
+function reIntake(ctx, itemId, { bin_no, key_bin_no, mileage_intake, fuel_intake }, photos = {}) {
   requireRole(ctx, 'loan_officer');
   const it = get(itemId);
   checkBranch(ctx, it.branch_id);
@@ -246,21 +251,21 @@ function reIntake(ctx, itemId, { bin_id, key_bin_id, mileage_intake, fuel_intake
   const min = settings.get('min_item_photos');
   if (!photos.sides || photos.sides.length < min) errs.push(`At least ${min} new photos from all sides are required.`);
   if (!photos.extra || !photos.extra.length) errs.push(`A new photo of the ${CATEGORIES[it.category].extraPhoto} is required.`);
-  if (!bin_id) errs.push(it.category === 'car' ? 'Choose the yard bay number.' : 'Choose the bin number.');
-  if (it.category === 'car' && !key_bin_id) errs.push('Choose the key bin number for the keys and papers.');
+  if (!String(bin_no || '').trim()) errs.push(it.category === 'car' ? 'Enter the yard bay number.' : 'Enter the bin number.');
+  if (it.category === 'car' && !String(key_bin_no || '').trim()) errs.push('Enter the key bin number for the keys and papers.');
   if (it.category === 'car' && !/^\d+$/.test(String(mileage_intake || ''))) errs.push('Odometer reading is required.');
   if (errs.length) throw new RuleError('The item cannot be taken in again yet.', errs);
   const stolen = stolenHits(uniqueNumbers(it));
   if (stolen.length) throw new RuleError('This item is blocked.', stolen);
-  bins.checkFree(Number(bin_id), { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
-  if (it.category === 'car') bins.checkFree(Number(key_bin_id), { branchId: it.branch_id, kind: 'key', itemId: it.id });
   db.get().transaction(() => {
+    const bin = bins.resolve(ctx, bin_no, { branchId: it.branch_id, kind: it.category === 'car' ? 'yard' : 'store', itemId: it.id });
+    const keyBin = it.category === 'car' ? bins.resolve(ctx, key_bin_no, { branchId: it.branch_id, kind: 'key', itemId: it.id }) : null;
     db.get().prepare(`UPDATE items SET returned_at = NULL, returned_to = NULL, return_id_shown = NULL, return_mileage = NULL, return_note = NULL,
       current_loan_id = NULL, date_in = ?, mileage_intake = COALESCE(?, mileage_intake), fuel_intake = COALESCE(?, fuel_intake), received_by = ? WHERE id = ?`)
       .run(today(ctx), it.category === 'car' ? Number(mileage_intake) : null, fuel_intake || null, ctx.user.id, itemId);
     files.storeUploads(photos.sides, { ownerType: 'item', ownerId: itemId, kind: 'intake_photo', userId: ctx.user.id, caption: `Re-intake ${today(ctx)}` });
     files.storeUploads(photos.extra, { ownerType: 'item', ownerId: itemId, kind: it.category === 'car' ? 'odometer_photo' : 'screen_photo', userId: ctx.user.id, caption: `Re-intake ${today(ctx)}` });
-    recordMovement(ctx, get(itemId), { to_status: 'in_store', reason: 'Taken in again for a new loan', to_bin_id: Number(bin_id), to_key_bin_id: it.category === 'car' ? Number(key_bin_id) : null });
+    recordMovement(ctx, get(itemId), { to_status: 'in_store', reason: 'Taken in again for a new loan', to_bin_id: bin.id, to_key_bin_id: keyBin ? keyBin.id : null });
   })();
 }
 

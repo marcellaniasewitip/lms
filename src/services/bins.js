@@ -60,16 +60,52 @@ function contents(binId) {
 // Checks that a chosen bin can take an item, and returns it.
 function checkFree(binId, { branchId, kind, itemId = 0 }) {
   const what = KINDS[kind].label.toLowerCase();
-  rule(binId, `Choose the ${what} number.`);
+  rule(binId, `Enter the ${what} number.`);
   const b = db.get().prepare('SELECT * FROM bins WHERE id = ?').get(binId);
   rule(b && b.active, `That ${what} does not exist or is closed.`);
-  rule(b.kind === kind, `Choose a ${what}: ${KINDS[kind].for.toLowerCase()} go in ${what}s.`);
+  rule(b.kind === kind, `${b.bin_no} is a ${KINDS[b.kind].label.toLowerCase()}: ${KINDS[kind].for.toLowerCase()} go in ${what}s.`);
   rule(b.branch_id === branchId, `${label(b)} belongs to another branch.`);
   if (b.capacity) {
     const used = db.get().prepare(`SELECT COUNT(*) n FROM items WHERE (bin_id = ? OR key_bin_id = ?) AND custody_status IN ${HELD} AND id != ?`).get(b.id, b.id, itemId).n;
-    rule(used < b.capacity, `${label(b)} is full (${used} of ${b.capacity}). Choose another bin.`);
+    rule(used < b.capacity, `${label(b)} is full (${used} of ${b.capacity}). Type another ${what} number.`);
   }
   return b;
+}
+
+// ---------- typed bin numbers ----------
+// Staff type the bin number (c1, C-1, K-01, y3 ...). Letters are not case sensitive and spaces,
+// dashes and leading zeros are ignored when matching, so "k1", "K 01" and "K-01" are the same bin.
+function cleanNo(s) { return String(s || '').trim().toUpperCase().replace(/\s+/g, ' '); }
+function keyOf(s) { return cleanNo(s).replace(/[\s\-_/.]+/g, '').replace(/\d+/g, (d) => String(Number(d))); }
+
+function findTyped(branchId, text, kind = null) {
+  const k = keyOf(text);
+  if (!k) return null;
+  const rows = db.get().prepare(`SELECT * FROM bins WHERE branch_id = ? ${kind ? 'AND kind = ?' : ''} ORDER BY active DESC, id`).all(...(kind ? [branchId, kind] : [branchId]));
+  return rows.find((b) => keyOf(b.bin_no) === k) || null;
+}
+
+/**
+ * The bin for a typed bin number: an existing bin of that number in the branch, or a new one
+ * created on the spot. Refuses a number already used for another kind of bin, a closed bin and
+ * a full bin. Returns the bin row.
+ */
+function resolve(ctx, text, { branchId, kind, itemId = 0 }) {
+  const what = KINDS[kind].label.toLowerCase();
+  const no = cleanNo(text);
+  rule(no, `Enter the ${what} number (for example ${kind === 'store' ? 'C1 or B-012' : kind === 'key' ? 'K-01' : 'Y3'}).`);
+  rule(no.length <= 20 && /^[A-Z0-9][A-Z0-9 \-/.]*$/.test(no), `"${String(text).trim()}" is not a valid ${what} number: use letters and numbers, for example C1 or K-01.`);
+  let b = findTyped(branchId, no, kind);
+  if (!b) {
+    const other = findTyped(branchId, no);
+    if (other) throw new RuleError(`${other.bin_no} is a ${KINDS[other.kind].label.toLowerCase()}. ${KINDS[kind].for} go in ${what}s: type a ${what} number.`);
+    db.get().prepare('INSERT INTO bins(branch_id, kind, bin_no, capacity, description, created_at) VALUES (?,?,?,?,?,?)')
+      .run(branchId, kind, no, kind === 'store' ? null : 1, 'Added when first used', dates.nowIso());
+    b = findTyped(branchId, no, kind);
+    audit.log(ctx, 'bin_created', 'bin', b.id, null, { bin_no: b.bin_no, kind, branch_id: branchId });
+  }
+  if (!b.active) throw new RuleError(`${label(b)} is closed. Type another ${what} number, or ask the Admin to reopen it.`);
+  return checkFree(b.id, { branchId, kind, itemId });
 }
 
 // Admin: add a single bin or a numbered range (e.g. B-041 to B-060).
@@ -81,7 +117,11 @@ function create(ctx, { branch_id, kind, from, to, bin_no, capacity, description 
   const cap = capacity ? Number(capacity) : null;
   rule(cap === null || (Number.isInteger(cap) && cap > 0), 'Capacity must be a whole number, or blank for no limit.');
   const numbers = [];
-  if (bin_no) numbers.push(String(bin_no).trim().toUpperCase());
+  if (bin_no) {
+    const existing = findTyped(branch.id, bin_no);
+    rule(!existing, `Bin ${existing && existing.bin_no} already exists in this branch.`);
+    numbers.push(cleanNo(bin_no));
+  }
   else {
     const a = Number(from), b = Number(to);
     rule(Number.isInteger(a) && Number.isInteger(b) && a > 0 && b >= a && b - a < 500, 'Enter a number range, for example 41 to 60 (up to 500 bins at once).');
@@ -118,14 +158,13 @@ function seedBranch(branchId) {
   for (let n = 1; n <= 10; n++) ins.run(branchId, 'yard', `Y-${String(n).padStart(2, '0')}`, 1, now);
 }
 
-// Find a bin by what staff type or scan: "B-012", "b12", "Bin B-012", "K-3".
+// Find a bin by what staff type or scan in the search box: "C1", "b12", "Bin B-012", "Key bin K-3".
 function findByText(branchId, text) {
-  const t = String(text || '').toUpperCase().replace(/^(BIN|KEY BIN|YARD BAY)\s*/, '').replace(/\s+/g, '');
-  const m = /^([BKY])-?0*(\d+)$/.exec(t);
-  if (!m) return null;
-  const kind = { B: 'store', K: 'key', Y: 'yard' }[m[1]];
-  const no = `${m[1]}-${m[2].padStart(KINDS[kind].pad, '0')}`;
-  return db.get().prepare(`SELECT * FROM bins WHERE bin_no = ? ${branchId ? 'AND branch_id = ' + Number(branchId) : ''} ORDER BY id LIMIT 1`).get(no) || null;
+  const t = String(text || '').trim().replace(/^(bin|key bin|yard bay)\s+/i, '');
+  if (!t || t.length > 20) return null;
+  const k = keyOf(t);
+  const rows = db.get().prepare(`SELECT * FROM bins ${branchId ? 'WHERE branch_id = ' + Number(branchId) : ''} ORDER BY active DESC, id`).all();
+  return rows.find((b) => keyOf(b.bin_no) === k) || null;
 }
 
-module.exports = { KINDS, label, get, forBranch, all, contents, checkFree, create, update, seedBranch, findByText };
+module.exports = { KINDS, label, get, forBranch, all, contents, checkFree, resolve, findTyped, keyOf, create, update, seedBranch, findByText };
