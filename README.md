@@ -75,6 +75,7 @@ The server reads its page templates once, at start-up, so it keeps running the v
 
 ## Interpretations (please confirm)
 
+* **Register customer** follows the lender's printed pledge ticket: nearest landmark, residence proof, SMS language (messages go in English), the live camera photo and the specimen signature were removed (the customer signs the printed ticket; one or two customer photos are uploaded instead), and the customer's own bank details are no longer collected — the form shows the **company's** bank and mobile-banking details (Admin → Settings), which also print on the Disclosure Statement and receipts. Columns for the removed fields are kept, so earlier values stay on record.
 * **Next of kin** was removed from the customer form at the lender's request (the system description lists it as required). The database columns are kept, so details already saved stay on record.
 
 * **Several items with different grades:** the loan limit is the sum of each item's allowed amount, and the weekly rate must fall in the band of the *lowest-graded* item.

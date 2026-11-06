@@ -19,6 +19,12 @@ const DEFAULTS = {
   aml_repeat_days: 90, // ... within this many days triggers a flag
   monthly_lending_target: 15000000, // K150,000
   monthly_collection_target: 12000000, // K120,000
+  // The company's bank and mobile-banking details, where customers pay by deposit or transfer.
+  company_bank_name: '',
+  company_bank_account_name: '',
+  company_bank_account_no: '',
+  company_bank_branch: '',
+  company_mobile_banking: '',
   ticket_terms: [
     'Holding period: the goods in Schedule 1 are held by the pawnbroker as security from the contract date until the redemption date shown, plus the grace period stated in the Disclosure Statement.',
     'Inspection: the pledger may look at the goods at the redemption address during business hours, only with a staff member present. Cars stay in the secure yard and must not be driven, used, moved or emptied until the loan is fully paid.',
@@ -51,6 +57,18 @@ function all() {
 function set(key, value) {
   db.get().prepare('INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .run(key, JSON.stringify(value));
+}
+
+// Company bank details for customer payments; empty fields are left out.
+function companyBank() {
+  const s = all();
+  const b = {
+    bank: s.company_bank_name, accountName: s.company_bank_account_name, accountNo: s.company_bank_account_no,
+    branch: s.company_bank_branch, mobile: s.company_mobile_banking,
+  };
+  b.any = Object.values(b).some(Boolean);
+  b.text = [b.bank && `${b.bank}${b.branch ? ' ' + b.branch : ''}`, b.accountName && `account name ${b.accountName}`, b.accountNo && `account no. ${b.accountNo}`, b.mobile && `mobile banking ${b.mobile}`].filter(Boolean).join(', ');
+  return b;
 }
 
 function grades() { return db.get().prepare('SELECT * FROM grades ORDER BY grade').all(); }
@@ -95,4 +113,4 @@ function seedReferenceData() {
   for (const b of d.prepare('SELECT id FROM branches').all()) bins.seedBranch(b.id);
 }
 
-module.exports = { DEFAULTS, get, all, set, grades, grade, seedReferenceData };
+module.exports = { DEFAULTS, get, all, set, companyBank, grades, grade, seedReferenceData };

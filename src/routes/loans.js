@@ -145,11 +145,13 @@ r.get('/:id/ticket', (req, res) => {
   const officer = db.get().prepare('SELECT full_name FROM users WHERE id = ?').get(l.loan_officer_id);
   const ids = customers.ids(c.id).filter((x) => x.status === 'accepted');
   const primary = ids.find((x) => x.type_use === 'primary') || ids[0];
+  const ordered = primary ? [primary, ...ids.filter((x) => x !== primary)].slice(0, 2) : [];
   const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'Recorded (encrypted)') : '—' }));
   require('../lib/audit').log(req.ctx(), 'print_ticket', 'loan', l.id, null, { version: t && t.version });
   res.render('print/ticket', {
     title: `Pledge ticket ${l.loan_no}`, l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
-    idText: primary ? `${primary.type_name} ${customers.idNumberFor({ user: { role: 'cro' } }, primary)}` : '', preview: !l.release_date,
+    idText: ordered.map((x) => `${x.type_name} ${customers.idNumberFor({ user: { role: 'cro' } }, x)}`).join(' / '), preview: !l.release_date,
+    bank: require('../services/settings').companyBank(),
   });
 });
 r.get('/:id/barcode.png', (req, res) => {
@@ -175,7 +177,7 @@ r.get('/:id/receipt/:pid', (req, res) => {
   const l = load(req);
   const p = loans.payment(req.params.pid);
   if (p.loan_id !== l.id) throw new Forbidden();
-  res.render('print/receipt', { title: `Receipt ${p.receipt_no}`, l, p, c: customers.get(l.customer_id), branch: db.get().prepare('SELECT * FROM branches WHERE id = ?').get(l.branch_id), postedBy: db.get().prepare('SELECT full_name FROM users WHERE id = ?').get(p.posted_by).full_name, owing: loans.total(l) });
+  res.render('print/receipt', { title: `Receipt ${p.receipt_no}`, bank: require('../services/settings').companyBank(), l, p, c: customers.get(l.customer_id), branch: db.get().prepare('SELECT * FROM branches WHERE id = ?').get(l.branch_id), postedBy: db.get().prepare('SELECT full_name FROM users WHERE id = ?').get(p.posted_by).full_name, owing: loans.total(l) });
 });
 r.post('/:id/payments/:pid/reverse', only('loan_officer'), (req, res) => { loans.requestReversal(req.ctx(), Number(req.params.pid), req.body.reason); back(req, res, 'Reversal requested. The Admin must approve it.'); });
 r.post('/:id/waivers', only('loan_officer', 'cro'), (req, res) => { loans.requestWaiver(req.ctx(), Number(req.params.id), req.body); back(req, res, 'Waiver requested. A CRO must approve it.'); });

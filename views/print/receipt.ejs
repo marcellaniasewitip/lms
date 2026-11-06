@@ -19,7 +19,7 @@
   </table>
   <hr><div>Amount to collect your item today</div><div class="big"><%= K(p.balance_after != null ? p.balance_after : owing) %></div>
   <% if (p.status === 'reversed') { %><p><strong>THIS PAYMENT WAS REVERSED.</strong></p><% } %>
-  <p class="small">Posted by <%= postedBy %>. Quote loan number <%= l.loan_no %> on bank or mobile transfers. Keep this receipt. Due date <%= fd(l.maturity_date) %>.</p>
+  <p class="small">Posted by <%= postedBy %>. Quote loan number <%= l.loan_no %> on bank or mobile transfers<%= bank.any ? ' to ' + bank.text : '' %>. Keep this receipt. Due date <%= fd(l.maturity_date) %>.</p>
 </div>
 <p class="noprint" style="text-align:center"><button class="btn" data-print>Print receipt</button> <a href="/loans/<%= l.id %>">Back to loan</a></p>
 <script src="/static/js/app.js"></script>

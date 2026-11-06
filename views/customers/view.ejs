@@ -30,18 +30,14 @@
 <div class="panel">
   <h2>Profile</h2>
   <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap">
-    <div class="photos"><% if (photo) { %><a href="/files/<%= photo.id %>"><img src="/files/<%= photo.id %>" alt="Live photo"></a><% } else { %><div class="empty">No live photo</div><% } %>
-      <% if (signature) { %><a href="/files/<%= signature.id %>"><img src="/files/<%= signature.id %>" alt="Signature" style="object-fit:contain;background:#fff"></a><% } %></div>
+    <div class="photos"><% if (photos.length) { photos.forEach(function (ph, n) { %><a href="/files/<%= ph.id %>"><img src="/files/<%= ph.id %>" alt="Customer photo <%= n + 1 %>"></a><% }) } else { %><div class="empty">No photo</div><% } %></div>
     <dl class="kv small" style="flex:1">
       <dt>Sex / marital</dt><dd><%= c.sex %> · <%= c.marital_status %></dd>
       <dt>Citizenship</dt><dd><%= c.citizenship %></dd>
       <dt>Origin</dt><dd><%= c.home_village %>, <%= c.home_district %>, <%= c.home_province %></dd>
-      <dt>Address</dt><dd><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %><br><span class="muted">Near <%= c.addr_landmark %><%= c.po_box ? ' · ' + c.po_box : '' %></span></dd>
-      <dt>Residence proof</dt><dd><%= c.residence_proof_type %> <% residence.forEach(function (f) { %><a href="/files/<%= f.id %>">scan</a> <% }) %></dd>
+      <dt>Address</dt><dd><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %><%= c.po_box ? ' · ' + c.po_box : '' %></dd>
       <dt>Work</dt><dd><%= c.occupation || '—' %><%= c.employer ? ', ' + c.employer : '' %><%= c.usual_income ? ' · ' + K(c.usual_income) : '' %></dd>
-      <dt>Bank</dt><dd><%= c.bank_name || '—' %> <%= bank.account %> <%= bank.mobile ? '· mobile ' + bank.mobile : '' %></dd>
       <dt>Consents</dt><dd>Terms <%= fts(c.consent_terms_at) %> · Data <%= fts(c.consent_data_at) %> · Forfeiture <%= fts(c.consent_forfeit_at) %></dd>
-      <dt>SMS language</dt><dd><%= c.sms_language === 'tpi' ? 'Tok Pisin' : 'English' %></dd>
     </dl>
   </div>
   <% if (complete.length) { %><div class="alert alert-warn small" style="margin-top:.8rem">Profile incomplete: <%= complete.join(' ') %></div><% } %>
@@ -68,7 +64,7 @@
 
 <div class="panel" id="ids">
   <h2>Identity documents</h2>
-  <p class="small muted">Two IDs of different types; at least one primary ID with a photo matching the live photo. Name and date of birth must match the profile; IDs must not be expired; the pledger must be 18 or over.</p>
+  <p class="small muted">Two IDs of different types; at least one primary ID with a photo matching the customer's photos. Name and date of birth must match the profile; IDs must not be expired; the pledger must be 18 or over.</p>
   <div class="tablewrap"><table>
   <thead><tr><th>Type</th><th>Number</th><th>Name / DOB on ID</th><th>Issued / expires</th><th>Scans</th><th>Name check</th><th>Status</th><th>Checked</th></tr></thead>
   <tbody>
@@ -87,10 +83,10 @@
   <% if (is('cro') && x.status === 'pending') { %>
   <tr><td colspan="8" style="background:#fbfaf5">
     <form method="post" action="/customers/<%= c.id %>/ids/<%= x.id %>/review" class="f"><%- include('../partials/csrf') %>
-      <strong>CRO check:</strong> open the scans, compare with the live photo above and the profile.
+      <strong>CRO check:</strong> open the scans, compare with the customer's photos above and the profile.
       <% if (x.name_check === 'flagged') { %><div class="alert alert-warn small">Small spelling difference between "<%= x.name_on_id %>" and the profile name — accept only with a note.</div><% } %>
       <% if (x.name_check === 'mismatch') { %><div class="alert alert-error small">Name or date of birth does not match the profile — this ID must be rejected.</div><% } %>
-      <% if (x.type_photo === 'yes') { %><label class="check"><input type="checkbox" name="photo_match" value="1"> The photo on this ID matches the live photo taken at the branch.</label><% } %>
+      <% if (x.type_photo === 'yes') { %><label class="check"><input type="checkbox" name="photo_match" value="1"> The photo on this ID matches the customer's photos.</label><% } %>
       <label>Note</label><input name="note">
       <div class="actions"><button class="btn small" name="decision" value="accept">Accept ID</button><button class="btn small danger" name="decision" value="reject">Reject ID</button></div>
     </form></td></tr>

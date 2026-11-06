@@ -16,12 +16,11 @@ r.get('/', (req, res) => {
 });
 
 r.get('/new', only('loan_officer'), (req, res) => {
-  res.render('customers/form', { title: 'New customer', c: {}, PROVINCES: customers.PROVINCES, RESIDENCE: customers.RESIDENCE_PROOF });
+  res.render('customers/form', { title: 'New customer', c: {}, companyBank: require('../services/settings').companyBank(), PROVINCES: customers.PROVINCES, RESIDENCE: customers.RESIDENCE_PROOF });
 });
 function media(req) {
   return {
-    photoDataUrl: req.body.photo_data || null, signatureDataUrl: req.body.signature_data || null,
-    photo: req.filesOf('photo'), thumbprint: req.filesOf('thumbprint'), residence: req.filesOf('residence'),
+    photo1: req.filesOf('photo1'), photo2: req.filesOf('photo2'),
   };
 }
 r.post('/', only('loan_officer'), (req, res) => {
@@ -45,8 +44,8 @@ r.get('/:id', (req, res) => {
     .map((l) => ({ ...l, items: db.get().prepare('SELECT i.brand_name, i.model FROM loan_items li JOIN items i ON i.id = li.item_id WHERE li.loan_id = ?').all(l.id).map((i) => `${i.brand_name} ${i.model}`).join(', ') }));
   res.render('customers/view', {
     title: `${c.given_names} ${c.surname}`, c, ids, loans: loanRows, items: items.forCustomer(c.id), available: items.available(c.id),
-    photo: files.list('customer_photo', c.id)[0], signature: files.list('customer_signature', c.id)[0], residence: files.list('customer_residence', c.id),
-    readiness: customers.loanReadiness(c.id, req.res.locals.today), complete: customers.profileComplete(c), bank: customers.bankFor(ctx, c),
+    photos: files.list('customer_photo', c.id),
+    readiness: customers.loanReadiness(c.id, req.res.locals.today), complete: customers.profileComplete(c),
     idTypes: customers.idTypes(), mobile: customers.displayMobile(c.mobile),
     demoCode: config.SHOW_CODES ? req.session.demoMobileCode && req.session.demoMobileCode[c.id] : null,
     aml: db.get().prepare("SELECT * FROM aml_flags WHERE customer_id = ? AND status = 'open'").all(c.id),
@@ -55,7 +54,7 @@ r.get('/:id', (req, res) => {
 
 r.get('/:id/edit', only('loan_officer', 'cro'), (req, res) => {
   const c = load(req);
-  res.render('customers/form', { title: `Edit ${c.customer_no}`, c, PROVINCES: customers.PROVINCES, RESIDENCE: customers.RESIDENCE_PROOF });
+  res.render('customers/form', { title: `Edit ${c.customer_no}`, c, companyBank: require('../services/settings').companyBank(), PROVINCES: customers.PROVINCES, RESIDENCE: customers.RESIDENCE_PROOF });
 });
 r.post('/:id', only('loan_officer', 'cro'), (req, res) => {
   customers.update(req.ctx(), Number(req.params.id), req.body, media(req));

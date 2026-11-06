@@ -38,9 +38,9 @@
   <h2>Your details</h2>
   <table class="t"><tr><th>Pledger</th><td><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</td></tr>
   <tr><th>Postal address</th><td><%= c.po_box || '—' %></td></tr>
-  <tr><th>Residential address</th><td><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %> (near <%= c.addr_landmark %>)</td></tr>
+  <tr><th>Residential address</th><td><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %></td></tr>
   <tr><th>Phone</th><td><%= fmtPhone(c.mobile) %> (<%= c.mobile_network %>)</td></tr>
-  <tr><th>ID type and number</th><td><%= idText %></td></tr>
+  <tr><th>ID</th><td><%= idText %></td></tr>
   <tr><th>Date of birth</th><td><%= fd(c.dob) %> (18 or over: <%= dates.ageOn(c.dob, fig.release) >= 18 ? 'yes' : 'NO' %>)</td></tr></table>
 
   <h2>Contract</h2>
@@ -75,6 +75,7 @@
     <tr><th>Amount advanced</th><td><%= K(fig.amount) %></td></tr>
     <tr><th>Weekly interest rate</th><td><%= l.weekly_rate %>% a week on the principal still owed (set by the item's quality grade <%= l.rate_grade %>)</td></tr>
     <tr><th>Interest for a full week on the amount advanced</th><td><%= K(fig.weeklyCharge) %></td></tr>
+    <% if (bank.any) { %><tr><th>Where to pay</th><td>Cash at <%= branch.name %>, or bank deposit / mobile transfer to <%= bank.text %>, quoting contract number <%= l.loan_no %>.</td></tr><% } %>
     <tr><th>Fees</th><td><% const fl = JSON.parse(l.fee_lines || '[]'); %><%= fl.length ? fl.map(function (f) { return f.name + ' ' + K(f.amount); }).join('; ') : 'None' %></td></tr>
     <tr><th>Redemption price if nothing is paid before <%= fd(fig.redemptionDate) %></th><td><strong><%= K(fig.price) %></strong></td></tr>
     <tr><th>Maturity (redemption) date</th><td><%= fd(fig.redemptionDate) %> — no renewals or extensions</td></tr>

@@ -22,7 +22,8 @@ const REQUIRED = {
   citizenship: 'Citizenship', home_province: 'Home province', home_district: 'Home district', home_village: 'Home village',
   mobile: 'Mobile number', addr_province: 'Current address – province',
   addr_district: 'Current address – district', addr_town: 'Town or suburb', addr_section_lot: 'Section and lot (or settlement/village)',
-  addr_landmark: 'Nearest landmark', residence_proof_type: 'Residence proof type',
+  // Nearest landmark and residence proof were removed from the form at the lender's request
+  // (the columns stay, so values saved earlier are kept).
   // Next of kin was removed from the customer form at the lender's request. The database columns
   // (nok_name, nok_relationship, nok_phone, nok_address) are kept, so details already saved stay
   // on record; add the four fields back here and in views/customers/form.ejs to bring it back.
@@ -112,13 +113,18 @@ function sendToDuplicateReview(ctx, customerId, hits) {
   audit.log(ctx, 'duplicate_blocked', 'customer', customerId, null, { reason });
 }
 
+// Customer photos: up to two uploaded photos (photo1, photo2). Uploading new photos replaces the
+// earlier ones. The signature is given on the printed pledge ticket, not at registration.
 function saveMedia(ctx, customerId, media = {}) {
   const uid = ctx.user && ctx.user.id;
-  if (media.photoDataUrl) { files.removeOwner('customer_photo', customerId); files.storeDataUrl({ ownerType: 'customer_photo', ownerId: customerId, kind: 'live_photo', dataUrl: media.photoDataUrl, userId: uid }); }
-  if (media.photo && media.photo.length) { files.removeOwner('customer_photo', customerId); files.storeUploads(media.photo, { ownerType: 'customer_photo', ownerId: customerId, kind: 'live_photo', userId: uid }); }
-  if (media.signatureDataUrl) { files.removeOwner('customer_signature', customerId); files.storeDataUrl({ ownerType: 'customer_signature', ownerId: customerId, kind: 'signature', dataUrl: media.signatureDataUrl, userId: uid }); }
-  if (media.thumbprint && media.thumbprint.length) { files.removeOwner('customer_signature', customerId); files.storeUploads(media.thumbprint, { ownerType: 'customer_signature', ownerId: customerId, kind: 'thumbprint', userId: uid }); }
-  if (media.residence && media.residence.length) files.storeUploads(media.residence, { ownerType: 'customer_residence', ownerId: customerId, kind: 'residence_proof', userId: uid });
+  const uploads = [...(media.photo1 || []), ...(media.photo2 || []), ...(media.photo || [])];
+  if (uploads.length) {
+    files.removeOwner('customer_photo', customerId);
+    files.storeUploads(uploads.slice(0, 2), { ownerType: 'customer_photo', ownerId: customerId, kind: 'customer_photo', userId: uid });
+  } else if (media.photoDataUrl) {
+    files.removeOwner('customer_photo', customerId);
+    files.storeDataUrl({ ownerType: 'customer_photo', ownerId: customerId, kind: 'customer_photo', dataUrl: media.photoDataUrl, userId: uid });
+  }
 }
 
 function create(ctx, data, media = {}) {
@@ -130,6 +136,7 @@ function create(ctx, data, media = {}) {
   const consentTs = dates.nowIso();
   for (const k of ['consent_terms', 'consent_data', 'consent_forfeit']) if (!data[k]) errs.push('All three consents (loan terms, data use, forfeiture and sale) must be given and are dated.');
   if (errs.length) throw new RuleError('Consents are required.', [...new Set(errs)]);
+  if (!(media.photo1 || []).length && !(media.photo || []).length && !media.photoDataUrl) throw new RuleError('Please fix the customer profile.', ['Upload the customer photo (Photo 1).']);
   tidyPhones(c);
   const nameNorm = names.norm(`${c.given_names} ${c.surname}`);
   const hits = findDuplicates({ mobileNorm: c.mobile, nameNorm, dob: c.dob });
@@ -276,8 +283,8 @@ function reviewId(ctx, idRecordId, { decision, photo_match, note }) {
     if (dates.ageOn(r.dob_on_id, on) < 18) errs.push('The ID shows the pledger is under 18.');
     if (nc === 'mismatch') errs.push('The name on the ID does not match the profile.');
     if (nc === 'flagged' && !note) errs.push('The name differs slightly from the profile: add a note explaining why you accept it.');
-    if (r.type_photo === 'yes' && !photo_match) errs.push('Confirm the photo on the ID matches the live photo taken at the branch.');
-    if (!files.list('customer_photo', c.id).length) errs.push('The customer has no live photo yet.');
+    if (r.type_photo === 'yes' && !photo_match) errs.push("Confirm the photo on the ID matches the customer's photos.");
+    if (!files.list('customer_photo', c.id).length) errs.push('The customer has no photo yet: upload Photo 1 on the profile.');
     if (errs.length) throw new RuleError('This ID cannot be accepted.', errs);
   } else if (!note) throw new RuleError('Give a reason for rejecting the ID.');
   db.get().prepare('UPDATE customer_ids SET status = ?, photo_match = ?, name_check = ?, check_note = ?, checked_by = ?, checked_at = ? WHERE id = ?')
@@ -292,7 +299,7 @@ function twoIdRule(customerId, onDate) {
   const valid = ids(customerId).filter((x) => x.status === 'accepted' && (!x.expiry_date || x.expiry_date >= onDate));
   const types = new Set(valid.map((x) => x.id_type_id));
   if (types.size < 2) reasons.push('Two different, valid, unexpired IDs checked by the CRO are needed.');
-  if (!valid.some((x) => x.type_use === 'primary' && x.type_photo === 'yes' && x.photo_match)) reasons.push('At least one must be a primary ID with a photo matched to the live photo.');
+  if (!valid.some((x) => x.type_use === 'primary' && x.type_photo === 'yes' && x.photo_match)) reasons.push("At least one must be a primary ID with a photo matched to the customer's photos.");
   const expired = ids(customerId).filter((x) => x.status === 'accepted' && x.expiry_date && x.expiry_date < onDate);
   for (const x of expired) reasons.push(`${x.type_name} expired on ${dates.fmt(x.expiry_date)}.`);
   return { ok: reasons.length === 0, reasons, valid };
@@ -301,9 +308,7 @@ function twoIdRule(customerId, onDate) {
 function profileComplete(c) {
   const reasons = validate(c, dates.today()).filter((e) => !e.includes('18'));
   if (!c.mobile_verified_at) reasons.push('Mobile number not yet confirmed by SMS code.');
-  if (!files.list('customer_photo', c.id).length) reasons.push('Live photo missing.');
-  if (!files.list('customer_signature', c.id).length) reasons.push('Specimen signature or thumbprint missing.');
-  if (!files.list('customer_residence', c.id).length) reasons.push('Residence proof scan missing.');
+  if (!files.list('customer_photo', c.id).length) reasons.push('Customer photo missing (upload Photo 1).');
   if (!c.consent_terms_at || !c.consent_data_at || !c.consent_forfeit_at) reasons.push('Consents missing.');
   return reasons;
 }

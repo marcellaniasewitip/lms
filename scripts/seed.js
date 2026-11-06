@@ -26,6 +26,9 @@ const fx = require('./fixtures');
 db.open();
 settings.seedReferenceData();
 const d = db.get();
+settings.set('company_bank_name', 'BSP'); settings.set('company_bank_branch', 'Waigani');
+settings.set('company_bank_account_name', 'Kina Pledge Finance Ltd'); settings.set('company_bank_account_no', '1001234567');
+settings.set('company_mobile_banking', '(+675) 7000-1234');
 d.prepare(`INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES ('LAE','Lae – Top Town','+675 472 0000','lae@kinapledge.com.pg','PO Box 2200, Lae, Morobe','Section 5, Lot 9, Coronation Drive, Top Town, Lae',?)`).run(dates.nowIso());
 require('../src/services/bins').seedBranch(2); // default numbered bins for the Lae branch
 
@@ -149,7 +152,7 @@ at(0, () => {
     surname: 'Kumul', given_names: 'Esther', dob: '12/02/1993', sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean', home_province: 'Manus',
     home_district: 'Lorengau', home_village: 'Pere', mobile: '(+675) 8223-4511', addr_province: 'National Capital District', addr_district: 'Moresby South',
     addr_town: 'Boroko', addr_section_lot: 'Section 41, Lot 7', addr_landmark: 'Opposite Boroko Foodworld', residence_proof_type: 'Rental letter', sms_language: 'en', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
-  }, { photoDataUrl: fx.DATA_URL, signatureDataUrl: fx.DATA_URL, residence: [fx.file('rental-letter.png')] });
+  }, { photo1: [fx.file('photo.png')] });
   const code = customers.sendMobileCode(C(lo, T), id); customers.confirmMobileCode(C(lo, T), id, code);
   const types = customers.idTypes();
   customers.addId(C(lo, T), id, { id_type_id: types[1].id, number: 'P1234567', issue_date: '10/10/2021', expiry_date: '10/10/2031', name_on_id: 'Esther Kumul', dob_on_id: '12/02/1993' }, { front: [fx.file()] });

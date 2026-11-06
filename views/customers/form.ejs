@@ -28,7 +28,6 @@
     <div><label>Network</label><input value="<%= v('mobile_network') %>" data-network-out readonly tabindex="-1" placeholder="Worked out from the number"></div>
     <div><label>Second number</label><input name="second_phone" value="<%= v('second_phone') %>" <%- tel %>></div>
     <div><label>Email</label><input name="email" type="email" value="<%= v('email') %>"></div>
-    <div><label>SMS language</label><select name="sms_language"><option value="en" <%= sel('sms_language', 'en') %>>English</option><option value="tpi" <%= sel('sms_language', 'tpi') %>>Tok Pisin</option></select></div>
   </div>
 </fieldset>
 <fieldset><legend>Current address</legend>
@@ -37,12 +36,7 @@
     <div><label>District <span class="req">*</span></label><input name="addr_district" value="<%= v('addr_district') %>" required></div>
     <div><label>Town or suburb <span class="req">*</span></label><input name="addr_town" value="<%= v('addr_town') %>" required></div>
     <div><label>Section and lot (or settlement / village) <span class="req">*</span></label><input name="addr_section_lot" value="<%= v('addr_section_lot') %>" required></div>
-    <div><label>Nearest landmark <span class="req">*</span></label><input name="addr_landmark" value="<%= v('addr_landmark') %>" required></div>
     <div><label>PO Box</label><input name="po_box" value="<%= v('po_box') %>"></div>
-  </div>
-  <div class="row">
-    <div><label>Residence proof <span class="req">*</span></label><select name="residence_proof_type" required><option value=""></option><% RESIDENCE.forEach(function (p) { %><option <%= sel('residence_proof_type', p) %>><%= p %></option><% }) %></select></div>
-    <div><label>Scan of residence proof <%- isNew ? '<span class="req">*</span>' : '' %></label><input type="file" name="residence" accept="image/*,application/pdf"></div>
   </div>
 </fieldset>
 <fieldset><legend>Work or income (optional)</legend>
@@ -52,30 +46,24 @@
     <div><label>Usual income per fortnight (K)</label><input name="usual_income" value="<%= v('usual_income') %>" inputmode="decimal"></div>
   </div>
 </fieldset>
-<fieldset><legend>Bank and mobile banking (optional — for refunds and auction surplus)</legend>
-  <div class="row">
-    <div><label>Bank</label><select name="bank_name"><option value=""></option><% ['BSP','Kina Bank','Westpac','ANZ','TISA Bank','Nationwide Microbank','MiBank','Credit union'].forEach(function (o) { %><option <%= sel('bank_name', o) %>><%= o %></option><% }) %></select></div>
-    <div><label>Account number</label><input name="bank_account" autocomplete="off" placeholder="<%= isNew ? '' : 'Leave blank to keep the saved number' %>"><div class="hint">Stored encrypted.</div></div>
-    <div><label>Mobile banking number</label><input name="mobile_banking" autocomplete="off" placeholder="<%= isNew ? '' : 'Leave blank to keep' %>"></div>
-  </div>
+<fieldset><legend>Company bank and mobile banking (where the customer pays)</legend>
+  <% if (companyBank.any) { %>
+  <dl class="kv">
+    <% if (companyBank.bank) { %><dt>Bank</dt><dd><%= companyBank.bank %><%= companyBank.branch ? ', ' + companyBank.branch : '' %></dd><% } %>
+    <% if (companyBank.accountName) { %><dt>Account name</dt><dd><%= companyBank.accountName %></dd><% } %>
+    <% if (companyBank.accountNo) { %><dt>Account number</dt><dd><strong><%= companyBank.accountNo %></strong></dd><% } %>
+    <% if (companyBank.mobile) { %><dt>Mobile banking</dt><dd><%= companyBank.mobile %></dd><% } %>
+  </dl>
+  <p class="hint">Give these to the customer: they pay by deposit or transfer, quoting their contract (ticket) number.</p>
+  <% } else { %><p class="hint">The company's bank details have not been entered yet. The Admin adds them under Settings &amp; rates.</p><% } %>
 </fieldset>
 <%# Next of kin section removed at the lender's request (see the note in src/services/customers.js). %>
-<fieldset><legend>Photo and signature</legend>
-  <div class="capture">
-    <div data-camera="photo_data">
-      <label>Live photo taken at the branch <%- isNew ? '<span class="req">*</span>' : '' %></label>
-      <video autoplay playsinline muted></video><canvas class="preview" style="display:none"></canvas>
-      <div class="actions"><button type="button" class="btn small secondary" data-start>Start camera</button><button type="button" class="btn small" data-snap disabled>Take photo</button> <span class="small" data-status></span></div>
-      <input type="hidden" name="photo_data" id="photo_data">
-      <div class="hint">No camera? Upload a photo taken now: <input type="file" name="photo" accept="image/*" capture="user"></div>
-    </div>
-    <div style="flex:1;min-width:260px">
-      <label>Specimen signature <%- isNew ? '<span class="req">*</span>' : '' %></label>
-      <canvas class="sig" data-field="signature_data"></canvas><input type="hidden" name="signature_data" id="signature_data">
-      <div class="actions"><button type="button" class="btn small secondary" data-clear="signature_data">Clear</button></div>
-      <div class="hint">Or, if the customer cannot sign, upload a thumbprint: <input type="file" name="thumbprint" accept="image/*"></div>
-    </div>
+<fieldset><legend>Customer photos</legend>
+  <div class="row">
+    <div><label>Photo 1 <%- isNew ? '<span class="req">*</span>' : '' %></label><input type="file" name="photo1" accept="image/*" <%= isNew ? 'required' : '' %>></div>
+    <div><label>Photo 2</label><input type="file" name="photo2" accept="image/*"></div>
   </div>
+  <p class="hint">Upload one or two photos of the customer (JPEG or PNG). <%= isNew ? '' : 'Uploading new photos replaces the saved ones; leave both empty to keep them. ' %>The customer signs the printed pledge ticket, so no signature is taken here.</p>
 </fieldset>
 <% if (isNew) { %>
 <fieldset><legend>Consents (each is dated today)</legend>

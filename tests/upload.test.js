@@ -43,7 +43,7 @@ test.before(async () => {
 test.after(() => server.close());
 
 let n = 0;
-async function register({ photo, residence }) {
+async function register({ photo, photo2 }) {
   n++;
   const html = await (await get('/customers/new')).text();
   const fd = new FormData();
@@ -51,12 +51,12 @@ async function register({ photo, residence }) {
     surname: `Kapi${'ABCDEFGH'[n]}`, given_names: 'Rose', dob: `0${n}/03/1991`, sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean',
     home_province: 'Eastern Highlands', home_district: 'Goroka', home_village: 'Asaro', mobile: `(+675) 7345-678${n}`,
     addr_province: 'National Capital District', addr_district: 'Moresby North-East', addr_town: 'Gerehu', addr_section_lot: 'Section 3, Lot 4',
-    addr_landmark: 'Near the market', residence_proof_type: 'Utility bill', // no next of kin: no longer asked for
-    sms_language: 'en', consent_terms: '1', consent_data: '1', consent_forfeit: '1',
+    // no landmark, residence proof, SMS language, signature, bank details or next of kin: no longer asked for
+    consent_terms: '1', consent_data: '1', consent_forfeit: '1',
   };
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
-  if (photo) fd.append('photo', new Blob([photo.buf], { type: photo.type }), photo.name);
-  if (residence) fd.append('residence', new Blob([residence.buf], { type: residence.type }), residence.name);
+  if (photo) fd.append('photo1', new Blob([photo.buf], { type: photo.type }), photo.name);
+  if (photo2) fd.append('photo2', new Blob([photo2.buf], { type: photo2.type }), photo2.name);
   const res = await post(`/customers?_csrf=${token(html)}`, fd, '/customers/new');
   const loc = (res.headers.get('location') || '').replace(base, '');
   const page = res.status === 302 ? await (await get(loc)).text() : await res.text();
@@ -64,12 +64,12 @@ async function register({ photo, residence }) {
 }
 const count = () => db.get().prepare('SELECT COUNT(*) n FROM customers').get().n;
 
-test('a JPEG photo (even reported as image/jpg) and a PNG scan register the customer', async () => {
-  const { res, page } = await register({ photo: { buf: JPEG, type: 'image/jpg', name: 'IMG_0001.JPG' }, residence: { buf: PNG, type: 'image/png', name: 'bill.png' } });
+test('two customer photos (a JPEG reported as image/jpg and a PNG) register the customer', async () => {
+  const { res, page } = await register({ photo: { buf: JPEG, type: 'image/jpg', name: 'IMG_0001.JPG' }, photo2: { buf: PNG, type: 'image/png', name: 'photo2.png' } });
   assert.equal(res.status, 302);
   assert.match(res.headers.get('location'), /\/customers\/\d+$/);
   assert.match(page, /Customer registered/);
-  assert.equal(db.get().prepare("SELECT mime FROM files WHERE owner_type = 'customer_photo'").get().mime, 'image/jpeg');
+  assert.deepEqual(db.get().prepare("SELECT mime FROM files WHERE owner_type = 'customer_photo' ORDER BY id").all().map((f) => f.mime), ['image/jpeg', 'image/png']);
 });
 
 test('an iPhone HEIC photo is refused on the form with instructions, and nothing is saved', async () => {
@@ -83,9 +83,9 @@ test('an iPhone HEIC photo is refused on the form with instructions, and nothing
   assert.equal(count(), before);
 });
 
-test('a Word document as residence proof is refused with a clear message', async () => {
+test('a Word document as a photo is refused with a clear message', async () => {
   const before = count();
-  const { page } = await register({ residence: { buf: DOCX, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', name: 'letter.docx' } });
+  const { page } = await register({ photo: { buf: JPEG, type: 'image/jpeg', name: 'p.jpg' }, photo2: { buf: DOCX, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', name: 'letter.docx' } });
   assert.match(page, /&#34;letter.docx&#34; is not a photo or PDF/);
   assert.equal(count(), before);
 });
@@ -94,6 +94,13 @@ test('a file over 10 MB is refused with a message instead of hanging', async () 
   const { res, page } = await register({ photo: { buf: Buffer.concat([JPEG, Buffer.alloc(10.5 * 1024 * 1024)]), type: 'image/jpeg', name: 'huge.jpg' } });
   assert.equal(res.status, 302);
   assert.match(page, /larger than 10 MB/);
+});
+
+test('registering without a customer photo asks for Photo 1', async () => {
+  const before = count();
+  const { page } = await register({});
+  assert.match(page, /Upload the customer photo \(Photo 1\)/);
+  assert.equal(count(), before);
 });
 
 test('the security headers let the browser send the page address within the site', async () => {

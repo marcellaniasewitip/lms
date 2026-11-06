@@ -3,6 +3,16 @@
 <div class="pagehead"><div><h1>Settings</h1><div class="muted">Currency kina (K) · Port Moresby time (UTC+10) · dates DD/MM/YYYY. Every loan keeps its own copy of its terms, so changes here never alter an existing loan.</div></div></div>
 <form method="post" action="/admin/settings" class="f"><%- include('../partials/csrf') %>
 <fieldset><legend>Lender</legend><div class="row"><div><label>Lender name</label><input name="lender_name" value="<%= s.lender_name %>"></div><div><label>Slogan</label><input name="lender_slogan" value="<%= s.lender_slogan %>"></div></div></fieldset>
+<fieldset><legend>Company bank and mobile banking (where customers pay)</legend>
+  <div class="row">
+    <div><label>Bank</label><input name="company_bank_name" value="<%= s.company_bank_name %>" placeholder="e.g. BSP"></div>
+    <div><label>Bank branch</label><input name="company_bank_branch" value="<%= s.company_bank_branch %>" placeholder="e.g. Waigani"></div>
+    <div><label>Account name</label><input name="company_bank_account_name" value="<%= s.company_bank_account_name %>"></div>
+    <div><label>Account number</label><input name="company_bank_account_no" value="<%= s.company_bank_account_no %>"></div>
+    <div><label>Mobile banking number</label><input name="company_mobile_banking" value="<%= s.company_mobile_banking %>"></div>
+  </div>
+  <p class="hint">Shown on the Register customer screen, the Disclosure Statement and payment receipts, so customers know where to pay by bank deposit or mobile transfer (quoting their contract number).</p>
+</fieldset>
 <fieldset><legend>Loan product</legend><div class="row">
   <div><label>Minimum loan (K)</label><input name="min_loan" value="<%= k(s.min_loan) %>"></div>
   <div><label>Longest term (months)</label><input name="term_months" value="<%= s.term_months %>"><div class="hint">From the release date; no renewals or extensions.</div></div>

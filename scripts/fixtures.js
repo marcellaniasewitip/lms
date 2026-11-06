@@ -19,7 +19,7 @@ function makeCustomer(svc, lo, cro, today, p) {
     residence_proof_type: 'Utility bill', employer: p.employer || '', occupation: p.occupation || 'Teacher', usual_income: p.income || '',
     bank_name: 'BSP', bank_account: p.bank || '1000123456', mobile_banking: '', sms_language: p.lang || 'en',
     consent_terms: 'on', consent_data: 'on', consent_forfeit: 'on',
-  }, { photoDataUrl: DATA_URL, signatureDataUrl: DATA_URL, residence: [file('bill.png')] });
+  }, { photo1: [file('photo-1.png')], photo2: [file('photo-2.png')] });
   const code = customers.sendMobileCode(ctxFor(lo, today), id);
   customers.confirmMobileCode(ctxFor(lo, today), id, code);
   const types = customers.idTypes();
