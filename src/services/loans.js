@@ -263,6 +263,20 @@ function decide(ctx, loanId, { decision, amount, rate, note }) {
   aml.checkRepeatHighValue(ctx, l.customer_id, l.id, on);
 }
 
+// ---------- print the pledge ticket for signing ----------
+// The ticket is printed (and signed by the customer and the Loan Officer) before the money is
+// released. It carries the contract date, so it must be printed on the day of release.
+function markTicketPrinted(ctx, loanId) {
+  requireRole(ctx, 'loan_officer', 'cro');
+  const l = get(loanId);
+  writable(l); checkBranch(ctx, l.branch_id);
+  if (l.status !== 'approved') return;
+  const on = today(ctx);
+  db.get().prepare('UPDATE loans SET ticket_printed_on = ?, ticket_printed_by = ? WHERE id = ?').run(on, ctx.user.id, l.id);
+  if (l.ticket_printed_on !== on) event(ctx, l.id, 'document', { note: 'Pledge ticket printed for the customer to sign' });
+  audit.log(ctx, 'ticket_printed_for_signing', 'loan', l.id, { ticket_printed_on: l.ticket_printed_on }, { ticket_printed_on: on });
+}
+
 // ---------- release ----------
 function release(ctx, loanId, { channel, reference, agreement_signed }) {
   requireRole(ctx, 'loan_officer');
@@ -274,7 +288,9 @@ function release(ctx, loanId, { channel, reference, agreement_signed }) {
   if (!ready.ok) throw new RuleError('The loan cannot be released.', ready.reasons);
   rule(CHANNELS[channel], 'Choose how the money is paid out.');
   rule(channel === 'cash' || reference, 'A transfer reference is required for bank or mobile payouts.');
-  rule(agreement_signed, 'The customer must sign the pledge ticket and Disclosure Statement (showing any fees) before money is released.');
+  rule(l.ticket_printed_on, 'Print the pledge ticket first, for the customer and the Loan Officer to sign.');
+  rule(l.ticket_printed_on === on, `The pledge ticket was printed on ${dates.fmt(l.ticket_printed_on)}. Print it again today so the contract date is correct, and have it signed.`);
+  rule(agreement_signed, 'Confirm that the customer and the Loan Officer have signed the printed pledge ticket.');
   const t = terms(l);
   const kd = engine.keyDates(on, { termMonths: t.term_months, graceDays: t.grace_days });
   db.get().transaction(() => {
@@ -763,7 +779,7 @@ function ticketFigures(l) {
 }
 
 module.exports = {
-  STATUS, RELEASED, PAYABLE, CHANNELS, get, byNo, terms, total, loanItems, limits, createApplication, updateApplication, submit, cancel,
+  STATUS, RELEASED, PAYABLE, CHANNELS, markTicketPrinted, get, byNo, terms, total, loanItems, limits, createApplication, updateApplication, submit, cancel,
   valuate, decide, release, sync, postPayment, payments, payment, requestReversal, decideReversal, requestWaiver, decideWaiver,
   returnItems, handBack, tickets, currentTicket, replaceTicket, uploadSignedTicket, declareForfeit, sale, approveReserve, recordListing,
   recordAuctionUnsold, recordSale, payRefund, addNote, setDispute, history, interestEntries, ticketFigures, event, setStatus, writable,

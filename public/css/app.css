@@ -201,3 +201,12 @@ a.kpi:hover { border-color: var(--accent); }
 .navsearch { display: none; align-items: center; gap: .4rem; margin: 0 .25rem .6rem; padding: 0 .6rem; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); }
 nav.side .navsearch input { border: 0; padding: .45rem 0; outline: none; background: transparent; }
 @media (max-width: 600px) { .navsearch { display: flex; } }
+
+/* print → sign → release */
+ol.steps3 { list-style: none; counter-reset: st; margin: .6rem 0 0; padding: 0; }
+ol.steps3 > li { counter-increment: st; position: relative; padding: .2rem 0 1rem 2.6rem; border-left: 2px solid var(--line); margin-left: .9rem; }
+ol.steps3 > li:last-child { border-left-color: transparent; }
+ol.steps3 > li::before { content: counter(st); position: absolute; left: -0.95rem; top: 0; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: grid; place-items: center; background: #eceae4; color: #555; font-weight: 700; }
+ol.steps3 > li.now::before { background: var(--accent); color: #fff; }
+ol.steps3 > li.done::before { content: '✓'; background: var(--ok-soft); color: var(--ok); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }

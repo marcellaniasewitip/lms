@@ -64,14 +64,23 @@
 <% if (l.status === 'approved') { %>
   <p>Approved <strong><%= K(l.approved_amount) %></strong> at <strong><%= l.weekly_rate %>%</strong> a week on <%= fd(l.approval_date) %>.
   <% if (figures) { %>Weekly charge <%= K(figures.weeklyCharge) %>; if released today the redemption price is <strong><%= K(figures.price) %></strong> on <%= fd(figures.redemptionDate) %> (<%= figures.charges %> weekly charges<%= l.fees_total ? ' + fees ' + K(l.fees_total) : '' %>).<% } %></p>
-  <% if (is('loan_officer')) { %>
-  <form method="post" action="/loans/<%= l.id %>/release" class="f"><%- include('../partials/csrf') %>
-    <div class="row"><div><label>Pay out by</label><select name="channel"><% Object.entries(CHANNELS).forEach(function ([k, v]) { %><option value="<%= k %>"><%= v %></option><% }) %></select></div>
-    <div><label>Transfer reference (bank / mobile)</label><input name="reference"></div></div>
-    <% if (l.fees_total) { %><div class="alert alert-info small">Fees shown to the customer before signing: <% JSON.parse(l.fee_lines || '[]').forEach(function (f) { %><%= f.name %> <%= K(f.amount) %>; <% }) %></div><% } %>
-    <label class="check"><input type="checkbox" name="agreement_signed" value="1"> The customer has read and signed the pledge ticket and Disclosure Statement (with the forfeiture terms), and I have checked their ID today.</label>
-    <div class="actions"><a class="btn secondary" href="/loans/<%= l.id %>/ticket" target="_blank">Preview ticket</a><button class="btn">Release money</button></div>
-  </form><% } %>
+  <% if (is('loan_officer')) { const printedToday = l.ticket_printed_on === today; %>
+  <ol class="steps3">
+    <li class="<%= printedToday ? 'done' : 'now' %>"><strong>Print the pledge ticket</strong>
+      <div class="small muted">Two copies with the Disclosure Statement, filled in from the records.<%= l.ticket_printed_on ? ' Last printed ' + fd(l.ticket_printed_on) + (printedToday ? '' : ' — print again today so the contract date is correct') + '.' : '' %></div>
+      <div class="actions" style="margin-top:.4rem"><a class="btn <%= printedToday ? 'secondary' : '' %>" href="/loans/<%= l.id %>/ticket?print=1" target="_blank"><%- icon('file', 16) %> <%= printedToday ? 'Print again' : 'Print pledge ticket' %></a></div></li>
+    <li class="<%= printedToday ? 'now' : '' %>"><strong>The customer and the Loan Officer sign it</strong>
+      <div class="small muted">Check the customer's ID today. <% if (l.fees_total) { %>Point out the fees: <% JSON.parse(l.fee_lines || '[]').forEach(function (f) { %><%= f.name %> <%= K(f.amount) %>; <% }) %><% } %></div></li>
+    <li><strong>Release the money</strong>
+      <form method="post" action="/loans/<%= l.id %>/release" class="f"><%- include('../partials/csrf') %>
+        <div class="row"><div><label>Pay out by</label><select name="channel" <%= printedToday ? '' : 'disabled' %>><% Object.entries(CHANNELS).forEach(function ([k, v]) { %><option value="<%= k %>"><%= v %></option><% }) %></select></div>
+        <div><label>Transfer reference (bank / mobile)</label><input name="reference" <%= printedToday ? '' : 'disabled' %>></div></div>
+        <label class="check"><input type="checkbox" name="agreement_signed" value="1" <%= printedToday ? '' : 'disabled' %>> The customer and I have signed the printed pledge ticket and Disclosure Statement, and I checked the customer's ID today.</label>
+        <div class="actions"><button class="btn" <%= printedToday ? '' : 'disabled' %>>Release money</button><% if (!printedToday) { %><span class="small muted">Print the pledge ticket first.</span><% } %></div>
+      </form>
+      <div class="small muted">Afterwards, scan the lender's signed copy into the loan.</div></li>
+  </ol>
+  <% } %>
 <% } %>
 
 <% if (payable) { %>

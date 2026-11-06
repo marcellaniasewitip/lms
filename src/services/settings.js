@@ -4,6 +4,7 @@ const db = require('../db');
 const DEFAULTS = {
   lender_name: 'Kinaboy Limited',
   lender_slogan: 'When it matters',
+  ticket_brand: 'KINABOY', // printed at the top of the pledge ticket, beside the slogan
   min_loan: 2000, // toea = K20.00
   term_months: 3,
   rate_options: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],

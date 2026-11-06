@@ -17,7 +17,7 @@
   .pt { font-family: Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.22; border: 0; padding: 4px 8px; }
   .pt .copyline { text-align: right; font-size: 10px; margin-bottom: 4px; }
   .pt .brand { text-align: center; margin-top: 4px; }
-  .pt .brand { white-space: nowrap; }
+  .pt .brand { display: block; text-align: center; white-space: nowrap; }
   .pt .bname { font-size: 26px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
   .pt .bar { font-size: 26px; margin: 0 8px; }
   .pt .slogan { font-size: 21px; font-style: italic; }
@@ -44,9 +44,10 @@
   .pt .expired-mark { position: absolute; right: 24px; top: 6px; font-size: 26px; font-weight: 800; color: #a00; border: 3px solid #a00; padding: 0 8px; transform: rotate(-8deg); }
   @page { size: A4; margin: 10mm; }
   @media print { .noprint { display: none; } .sheet { border: 1px solid #000; } .sheet.pt { border: 0; margin: 0; max-width: none; } }
-</style></head><body>
-<div class="noprint" style="max-width:800px;margin:1rem auto"><button class="btn" data-print>Print both copies</button> <a href="/loans/<%= l.id %>">Back to loan</a>
-<% if (preview) { %><span class="alert alert-warn" style="display:inline-block;margin:0 0 0 1rem;padding:.3rem .6rem">Preview — figures assume release today; the ticket is final once money is released.</span><% } %></div>
+</style></head><body<%= autoPrint ? ' data-autoprint="1"' : '' %>>
+<div class="noprint" style="max-width:800px;margin:1rem auto;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap"><button class="btn" data-print>Print pledge ticket</button> <a class="btn secondary" href="/loans/<%= l.id %>">Back to the loan</a>
+<span class="small muted">Prints two copies (customer and lender), each with its Disclosure Statement. Both are signed by the customer and the Loan Officer; the lender's signed copy is scanned into the loan.</span>
+<% if (preview) { %><span class="alert alert-warn" style="display:inline-block;margin:0;padding:.3rem .6rem">For signing today: the contract date is today. Release the money today after both have signed.</span><% } %></div>
 <% const t0 = fig.terms; const cur = current; const expired = t && t.status === 'expired'; const replacement = t && t.kind === 'replacement';
    const pick = function (k) { return (t0[k] && t0[k].length ? t0[k] : cur[k]) || []; };
    const months = t0.term_months || cur.term_months;
@@ -57,8 +58,8 @@
 <div class="sheet pt">
   <% if (expired) { %><div class="expired-mark">EXPIRED</div><% } %>
   <% if (replacement) { %><div class="stamp">REPLACEMENT</div><% } %>
-  <div class="copyline noprint-hide"><span class="copy"><%= copy %></span><% if (t) { %> Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
-  <div class="brand"><span class="bname"><%= cur.lender_name %></span><% if (cur.lender_slogan) { %><span class="bar">|</span><span class="slogan"><%= cur.lender_slogan %></span><% } %></div>
+  <div class="copyline noprint"><span class="copy"><%= copy %></span><% if (t) { %> Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
+  <div class="brand"><span class="bname"><%= cur.ticket_brand || cur.lender_name %></span><% if (cur.lender_slogan) { %><span class="bar">|</span><span class="slogan"><%= cur.lender_slogan %></span><% } %></div>
   <div class="ptitle">PLEDGE TICKET FOR GOODS DETAILS IN SCHEDULE 1 – ATTACHED ("the Goods")</div>
   <div class="psub">Required by the Pawnbrokers Act 1951 ("PBA")</div>
 
@@ -126,7 +127,6 @@
       <li><%= CAT[i.category] %>, <%= i.brand_name %> <%= i.model %><%= i.category === 'car' ? (i.year ? ', ' + i.year : '') + (i.colour ? ', ' + i.colour : '') + ', odometer ' + Number(i.mileage_intake).toLocaleString() + ' km' : (i.storage ? ', ' + i.storage : '') + (i.ram ? ', ' + i.ram + ' RAM' : '') + (i.processor ? ', ' + i.processor : '') %></li>
       <li><%= i.category === 'car' ? 'VIN: ' + i.vin + ', Engine: ' + i.engine_no + ', Plate: ' + i.plate : i.imei ? 'IMEI: ' + i.imei : 'SN: ' + i.serial_no %></li>
       <li><%= acc.length ? 'Comes with ' + acc.join(', ') : 'No accessories' %><%= i.category === 'car' ? '' : ' and pw: ' + i.password %></li>
-      <% if (copy.startsWith('LENDER')) { %><li><strong><%= i.location %></strong><%= i.safe_location ? '; ' + i.safe_location : '' %> · tag <%= i.item_no %></li><% } %>
     </ul>
     <% }) %>
     <div class="barcode"><img src="/loans/<%= l.id %>/barcode.png" alt="<%= l.loan_no %>"></div>

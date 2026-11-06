@@ -104,6 +104,7 @@ test('returning the item frees its bin', () => {
   loans.submit(C(lo), id);
   loans.valuate(C(cro), id, laptop.id, { ...fx.valuationData(svc, 'laptop', { market: '2,000' }), ownership_note: 'ok' });
   loans.decide(C(cro), id, { decision: 'approve', amount: '500', rate: 10 });
+  loans.markTicketPrinted(C(lo), id);
   loans.release(C(lo), id, { channel: 'cash', agreement_signed: 1 });
   loans.postPayment(C(lo), id, { amount: '550', channel: 'cash' });
   const rec = customers.ids(cust)[0];

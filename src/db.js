@@ -283,6 +283,9 @@ function open(file = DB_FILE) {
   const itemCols = db.prepare('PRAGMA table_info(items)').all().map((c) => c.name);
   if (!itemCols.includes('bin_id')) db.exec('ALTER TABLE items ADD COLUMN bin_id INTEGER REFERENCES bins(id)');
   if (!itemCols.includes('key_bin_id')) db.exec('ALTER TABLE items ADD COLUMN key_bin_id INTEGER REFERENCES bins(id)');
+  const loanCols = db.prepare('PRAGMA table_info(loans)').all().map((c) => c.name);
+  if (!loanCols.includes('ticket_printed_on')) db.exec('ALTER TABLE loans ADD COLUMN ticket_printed_on TEXT');
+  if (!loanCols.includes('ticket_printed_by')) db.exec('ALTER TABLE loans ADD COLUMN ticket_printed_by INTEGER');
   // Only Admins are asked to choose their own password.
   db.prepare("UPDATE users SET must_change_pw = 0 WHERE role != 'admin' AND must_change_pw = 1").run();
   // The mobile network follows the number's prefix (Digicel / Telikom / Vodafone).

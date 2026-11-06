@@ -56,7 +56,7 @@ r.post('/settings', admin, (req, res) => {
   const moneyKeys = ['min_loan', 'aml_cash_threshold', 'aml_high_value', 'monthly_lending_target', 'monthly_collection_target'];
   const intKeys = ['term_months', 'grace_days', 'expiry_days', 'retention_years', 'surplus_payment_days', 'min_item_photos', 'car_mileage_tolerance_km', 'aml_repeat_count', 'aml_repeat_days'];
   const next = {};
-  for (const k of ['lender_name', 'lender_slogan', 'pledger_confirmations', 'rights_obligations', 'disclosure_extra',
+  for (const k of ['lender_name', 'lender_slogan', 'ticket_brand', 'pledger_confirmations', 'rights_obligations', 'disclosure_extra',
     'company_bank_name', 'company_bank_account_name', 'company_bank_account_no', 'company_bank_branch', 'company_mobile_banking']) if (b[k] !== undefined) next[k] = String(b[k]).trim();
   for (const k of moneyKeys) if (b[k] !== undefined) { const v = money.parse(b[k]); if (v === null || v < 0) errs.push(`${k}: enter an amount.`); else next[k] = v; }
   for (const k of intKeys) if (b[k] !== undefined) { const v = Number(b[k]); if (!Number.isInteger(v) || v < 0) errs.push(`${k}: enter a whole number.`); else next[k] = v; }

@@ -16,6 +16,9 @@
     el.addEventListener('submit', (e) => { if (!window.confirm(el.dataset.confirm)) e.preventDefault(); });
   });
 
+  // Open the print dialog straight away (Print pledge ticket button on the loan).
+  if (document.body.dataset.autoprint) window.addEventListener('load', () => setTimeout(() => window.print(), 300));
+
   // Print buttons.
   document.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => window.print()));
 

@@ -2,7 +2,7 @@
 <% const k = function (t) { return (t / 100).toFixed(2); }; %>
 <div class="pagehead"><div><h1>Settings</h1><div class="muted">Currency kina (K) · Port Moresby time (UTC+10) · dates DD/MM/YYYY. Every loan keeps its own copy of its terms, so changes here never alter an existing loan.</div></div></div>
 <form method="post" action="/admin/settings" class="f"><%- include('../partials/csrf') %>
-<fieldset><legend>Lender</legend><div class="row"><div><label>Lender name</label><input name="lender_name" value="<%= s.lender_name %>"></div><div><label>Slogan</label><input name="lender_slogan" value="<%= s.lender_slogan %>"></div></div></fieldset>
+<fieldset><legend>Lender</legend><div class="row"><div><label>Lender name</label><input name="lender_name" value="<%= s.lender_name %>"></div><div><label>Slogan</label><input name="lender_slogan" value="<%= s.lender_slogan %>"></div><div><label>Name at the top of the pledge ticket</label><input name="ticket_brand" value="<%= s.ticket_brand %>"><div class="hint">Printed as: <strong><%= s.ticket_brand %> | <em><%= s.lender_slogan %></em></strong></div></div></div></fieldset>
 <fieldset><legend>Company bank and mobile banking (where customers pay)</legend>
   <div class="row">
     <div><label>Bank</label><input name="company_bank_name" value="<%= s.company_bank_name %>" placeholder="e.g. BSP"></div>

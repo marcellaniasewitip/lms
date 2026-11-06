@@ -118,7 +118,12 @@ test('worked example end to end: K1,000 at 10% from 02/11/2026, paid in full 20/
   assert.throws(() => loans.decide(C(cro, '2026-11-02'), loanId, { decision: 'approve', amount: '1,000', rate: 15 }), rx(/10% to 12%/));
   assert.throws(() => loans.decide(C(cro, '2026-11-02'), loanId, { decision: 'approve', amount: '1,300', rate: 10 }), rx(/cannot exceed K1,200.00/));
   loans.decide(C(cro, '2026-11-02'), loanId, { decision: 'approve', amount: '1,000', rate: 10 });
-  assert.throws(() => loans.release(C(lo, '2026-11-02'), loanId, { channel: 'cash' }), /sign/);
+  // The pledge ticket must be printed (for signing) on the day of release, then signed.
+  assert.throws(() => loans.release(C(lo, '2026-11-02'), loanId, { channel: 'cash', agreement_signed: 'on' }), /Print the pledge ticket first/);
+  loans.markTicketPrinted(C(lo, '2026-11-01'), loanId);
+  assert.throws(() => loans.release(C(lo, '2026-11-02'), loanId, { channel: 'cash', agreement_signed: 'on' }), /Print it again today/);
+  loans.markTicketPrinted(C(lo, '2026-11-02'), loanId);
+  assert.throws(() => loans.release(C(lo, '2026-11-02'), loanId, { channel: 'cash' }), /signed the printed pledge ticket/);
   loans.release(C(lo, '2026-11-02'), loanId, { channel: 'cash', agreement_signed: 'on' });
   let l = loans.get(loanId);
   assert.equal(l.status, 'active');
@@ -174,6 +179,7 @@ test('grace, forfeiture, sale with surplus; reversal and waiver need a second pe
   loans.submit(C(lo, t0), loanId);
   loans.valuate(C(cro, t0), loanId, itemId, fx.valuationData(svc, 'phone', { grade: 'B', market: '1,500' }));
   loans.decide(C(cro, t0), loanId, { decision: 'approve', amount: '500', rate: 14 });
+  loans.markTicketPrinted(C(lo, t0), loanId);
   loans.release(C(lo, t0), loanId, { channel: 'cash', agreement_signed: 1 });
   const pid = loans.postPayment(C(lo, '2027-01-08'), loanId, { amount: '100', channel: 'cash' });
   const before = loans.total(loans.get(loanId));

@@ -131,7 +131,7 @@ r.post('/:id/decide', only('cro'), (req, res) => {
 });
 r.post('/:id/release', only('loan_officer'), (req, res) => {
   loans.release(req.ctx(), Number(req.params.id), req.body);
-  res.flash('success', 'Money released. Print the pledge ticket in two copies and scan the signed copy into the loan.');
+  res.flash('success', 'Money released. Give the customer their signed copy, and scan the lender\'s signed copy into the loan.');
   res.redirect(`/loans/${req.params.id}`);
 });
 
@@ -147,10 +147,11 @@ r.get('/:id/ticket', (req, res) => {
   const primary = ids.find((x) => x.type_use === 'primary') || ids[0];
   const ordered = primary ? [primary, ...ids.filter((x) => x !== primary)].slice(0, 2) : [];
   const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'held on file (shown to the CRO only)') : '—' }));
+  if (req.query.print && l.status === 'approved' && ['loan_officer', 'cro'].includes(req.user.role)) loans.markTicketPrinted(req.ctx(), l.id);
   require('../lib/audit').log(req.ctx(), 'print_ticket', 'loan', l.id, null, { version: t && t.version });
   res.render('print/ticket', {
     title: `Pledge ticket ${l.loan_no}`, l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
-    idText: ordered.map((x) => `${x.type_name} ${customers.idNumberFor({ user: { role: 'cro' } }, x)}`).join(' / '), preview: !l.release_date,
+    idText: 'ID #: ' + ordered.map((x) => customers.idNumberFor({ user: { role: 'cro' } }, x)).join(' / '), preview: !l.release_date, autoPrint: !!req.query.print,
     bank: require('../services/settings').companyBank(), current: settings.all(),
   });
 });

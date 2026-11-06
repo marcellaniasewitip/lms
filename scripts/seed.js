@@ -59,6 +59,7 @@ function loanFor({ who, cust, kind, item, ask, grade, market, repair = '0', amou
   loans.submit(C(who.lo, t), id);
   loans.valuate(C(who.cro, t), id, itemId, { ...fx.valuationData(svc, kind, { grade, market, repair }), ownership_note: item.ownerNote });
   loans.decide(C(who.cro, t), id, { decision: 'approve', amount, rate });
+  loans.markTicketPrinted(C(who.lo, t), id);
   loans.release(C(who.lo, t), id, { channel, reference: ref, agreement_signed: 1 });
   loans.uploadSignedTicket(C(who.lo, t), id, [fx.file('signed-ticket.png')]);
   return id;
