@@ -135,8 +135,9 @@ r.post('/:id/release', only('loan_officer'), (req, res) => {
   res.redirect(`/loans/${req.params.id}`);
 });
 
-r.get('/:id/ticket', (req, res) => {
-  const l = load(req);
+// Everything printed on the pledge ticket: the company parts come from Settings and Branches
+// (always the same); the customer, amounts, signatures and goods come from this loan.
+function ticketData(req, l) {
   const ready = l.approved_amount && l.weekly_rate;
   if (!ready) throw new Forbidden('The pledge ticket is available once the loan is approved.');
   const t = loans.currentTicket(l.id);
@@ -147,13 +148,34 @@ r.get('/:id/ticket', (req, res) => {
   const primary = ids.find((x) => x.type_use === 'primary') || ids[0];
   const ordered = primary ? [primary, ...ids.filter((x) => x !== primary)].slice(0, 2) : [];
   const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'held on file (shown to the CRO only)') : '—' }));
-  if (req.query.print && l.status === 'approved' && ['loan_officer', 'cro'].includes(req.user.role)) loans.markTicketPrinted(req.ctx(), l.id);
-  require('../lib/audit').log(req.ctx(), 'print_ticket', 'loan', l.id, null, { version: t && t.version });
-  res.render('print/ticket', {
-    title: `Pledge ticket ${l.loan_no}`, l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
-    idText: 'ID #: ' + ordered.map((x) => customers.idNumberFor({ user: { role: 'cro' } }, x)).join(' / '), preview: !l.release_date, autoPrint: !!req.query.print,
+  return {
+    l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
+    idText: 'ID #: ' + ordered.map((x) => customers.idNumberFor({ user: { role: 'cro' } }, x)).join(' / '),
     bank: require('../services/settings').companyBank(), current: settings.all(),
-  });
+  };
+}
+// Printing or downloading the ticket from an approved loan counts as printing it for signing.
+function markForSigning(req, l) {
+  if (req.query.print && l.status === 'approved' && ['loan_officer', 'cro'].includes(req.user.role)) loans.markTicketPrinted(req.ctx(), l.id);
+}
+
+r.get('/:id/ticket', (req, res) => {
+  const l = load(req);
+  const data = ticketData(req, l);
+  markForSigning(req, l);
+  require('../lib/audit').log(req.ctx(), 'print_ticket', 'loan', l.id, null, { version: data.t && data.t.version });
+  res.render('print/ticket', { title: `Pledge ticket ${l.loan_no}`, ...data, preview: !l.release_date, autoPrint: !!req.query.print });
+});
+// The same ticket as a PDF file (to print, email or keep).
+r.get('/:id/ticket/pdf', async (req, res) => {
+  const l = load(req);
+  const data = ticketData(req, l);
+  markForSigning(req, l);
+  require('../lib/audit').log(req.ctx(), 'download_ticket_pdf', 'loan', l.id, null, { version: data.t && data.t.version });
+  const pdf = await require('../lib/ticketPdf').build({ ...data, fd: require('../lib/dates').fmt, K: require('../lib/money').fmt, fmtPhone: (x) => require('../lib/phone').format(x) });
+  res.set('Content-Type', 'application/pdf');
+  res.set('Content-Disposition', `${req.query.inline ? 'inline' : 'attachment'}; filename="pledge-ticket-${l.loan_no}.pdf"`);
+  res.send(pdf);
 });
 r.get('/:id/barcode.png', (req, res) => {
   const l = loans.get(req.params.id);

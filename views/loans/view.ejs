@@ -6,7 +6,7 @@
   <div><h1>Loan <%= l.loan_no %> <%- include('../partials/badge', { s: l.status }) %><% if (l.dispute_open) { %> <span class="badge b-rejected">dispute open</span><% } %></h1>
   <div class="muted"><a href="/customers/<%= c.id %>"><%= c.given_names %> <%= c.surname %></a> (<%= c.customer_no %>) · Loan Officer <%= officer %><%= croName ? ' · CRO ' + croName : '' %></div></div>
   <div class="actions" style="margin:0">
-    <% if (l.weekly_rate) { %><a class="btn secondary" href="/loans/<%= l.id %>/ticket" target="_blank"><%= released ? 'Print pledge ticket' : 'Preview pledge ticket' %></a><% } %>
+    <% if (l.weekly_rate) { %><a class="btn secondary" href="/loans/<%= l.id %>/ticket" target="_blank"><%- icon('file', 16) %> <%= released ? 'Print pledge ticket' : 'Preview pledge ticket' %></a><a class="btn secondary" href="/loans/<%= l.id %>/ticket/pdf">PDF</a><% } %>
   </div>
 </div>
 <div class="steps"><% ['Application','CRO valuation','Approved','Released','Paid in full','Item returned'].forEach(function (s, i) { const cur = flow.indexOf(l.status === 'returned' ? 'draft' : l.status === 'in_grace' ? 'active' : l.status); %><span class="<%= i < cur ? 'done' : i === cur ? 'now' : '' %>"><%= s %></span><% }) %>
@@ -67,8 +67,8 @@
   <% if (is('loan_officer')) { const printedToday = l.ticket_printed_on === today; %>
   <ol class="steps3">
     <li class="<%= printedToday ? 'done' : 'now' %>"><strong>Print the pledge ticket</strong>
-      <div class="small muted">Two copies with the Disclosure Statement, filled in from the records.<%= l.ticket_printed_on ? ' Last printed ' + fd(l.ticket_printed_on) + (printedToday ? '' : ' — print again today so the contract date is correct') + '.' : '' %></div>
-      <div class="actions" style="margin-top:.4rem"><a class="btn <%= printedToday ? 'secondary' : '' %>" href="/loans/<%= l.id %>/ticket?print=1" target="_blank"><%- icon('file', 16) %> <%= printedToday ? 'Print again' : 'Print pledge ticket' %></a></div></li>
+      <div class="small muted">Print it, or download it as a PDF to print. Two copies with the Disclosure Statement, filled in from the records.<%= l.ticket_printed_on ? ' Last printed ' + fd(l.ticket_printed_on) + (printedToday ? '' : ' — print again today so the contract date is correct') + '.' : '' %></div>
+      <div class="actions" style="margin-top:.4rem"><a class="btn <%= printedToday ? 'secondary' : '' %>" href="/loans/<%= l.id %>/ticket?print=1" target="_blank"><%- icon('file', 16) %> <%= printedToday ? 'Print again' : 'Print pledge ticket' %></a><a class="btn secondary" href="/loans/<%= l.id %>/ticket/pdf?print=1"><%- icon('inbox', 16) %> Download PDF</a></div></li>
     <li class="<%= printedToday ? 'now' : '' %>"><strong>The customer and the Loan Officer sign it</strong>
       <div class="small muted">Check the customer's ID today. <% if (l.fees_total) { %>Point out the fees: <% JSON.parse(l.fee_lines || '[]').forEach(function (f) { %><%= f.name %> <%= K(f.amount) %>; <% }) %><% } %></div></li>
     <li><strong>Release the money</strong>
