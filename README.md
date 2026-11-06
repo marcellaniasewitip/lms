@@ -53,7 +53,7 @@ The server reads its page templates once, at start-up, so it keeps running the v
 |---|---|
 | Roles and permission table, two-person rules | `src/lib/ctx.js`, checks in every service (`requireRole`); creator ≠ approver, requester ≠ approver for waivers and reversals |
 | PNG mobile numbers: contact fields accept only `(+675) 71234567` or `(+675) 7123-4567`; the network is worked out from the prefix — Digicel 70–74 and 79, Telikom 75, 76 and 78, Vodafone 81–83 | `src/lib/phone.js`, `tests/phone.test.js` |
-| Customer profile fields, mobile confirmed by SMS code, consents | `src/services/customers.js`, `views/customers/form.ejs` |
+| Customer profile fields and consents (the customer's mobile is recorded without an SMS code check) | `src/services/customers.js`, `views/customers/form.ejs` |
 | Accepted IDs, the two-valid-IDs rule (1–8), duplicate check | `customers.addId / reviewId / twoIdRule / findDuplicates`; ID numbers stored encrypted with an HMAC for lookup |
 | Collateral: approved brands and minimum years, checks before accepting, IMEI (Luhn), stolen list, at least 4 photos | `src/services/items.js` |
 | Inspection checklist, grades A–D, share and rate band, assessed value | `loans.valuate / decide`; grade bands in Admin → Settings |
@@ -75,6 +75,8 @@ The server reads its page templates once, at start-up, so it keeps running the v
 
 ## Interpretations (please confirm)
 
+* **Customer mobile numbers** are no longer confirmed by an SMS code (removed at the lender's request); staff sign-in still uses an SMS code.
+* **Company name**: Kinaboy Limited, slogan "When it matters" (Admin → Settings). Databases that still carry the earlier placeholder name are renamed when the app starts.
 * **Register customer** follows the lender's printed pledge ticket: nearest landmark, residence proof, SMS language (messages go in English), the live camera photo and the specimen signature were removed (the customer signs the printed ticket; one or two customer photos are uploaded instead), and the customer's own bank details are no longer collected — the form shows the **company's** bank and mobile-banking details (Admin → Settings), which also print on the Disclosure Statement and receipts. Columns for the removed fields are kept, so earlier values stay on record.
 * **Next of kin** was removed from the customer form at the lender's request (the system description lists it as required). The database columns are kept, so details already saved stay on record.
 

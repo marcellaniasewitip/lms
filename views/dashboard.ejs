@@ -1,92 +1,165 @@
 <%- include('partials/header') %>
-<div class="pagehead"><div><h1>Good day, <%= user.full_name.split(' ')[0] %></h1><div class="muted"><%= ROLE_LABEL[user.role] %> dashboard · <%= fd(today) %> (Port Moresby time)</div></div>
-<% if (is('loan_officer')) { %><div class="actions" style="margin:0"><a class="btn" href="/customers/new">Register customer</a><a class="btn secondary" href="/loans/redeem">Redemption</a></div><% } %>
+<% const first = user.full_name.split(' ')[0];
+   const QA = function (href, ic, label, sub, primary) { return '<a class="qa' + (primary ? ' primary' : '') + '" href="' + href + '"><span class="qi">' + icon(ic, 20) + '</span><span><strong>' + label + '</strong><small>' + sub + '</small></span></a>'; };
+   const KPI = function (href, ic, n, label, tone) { return '<a class="kpi ' + (tone || '') + '" href="' + href + '"><span class="ki">' + icon(ic, 19) + '</span><span><span class="n">' + n + '</span><span class="l">' + label + '</span></span></a>'; };
+   const tone = function (n, t) { return n > 0 ? (t || 'attn') : 'good'; }; %>
+
+<div class="hello">
+  <div><h1><%= greeting %>, <%= first %></h1>
+  <div class="muted"><span class="rolepill"><%= ROLE_LABEL[user.role] %></span><%= fd(today) %> · Port Moresby time</div></div>
 </div>
 
 <% if (is('loan_officer')) { %>
-<div class="grid g4">
-  <div class="stat"><div class="n"><%= data.maturing.length %></div><div class="l">Maturing in the next 7 days</div></div>
-  <div class="stat"><div class="n"><%= data.toMatch.length %></div><div class="l">Payments to match</div></div>
-  <div class="stat"><div class="n"><%= data.toReturn.length %></div><div class="l">Items to return (paid in full)</div></div>
-  <div class="stat"><div class="n"><%= data.tasks.length %></div><div class="l">Open call tasks</div></div>
+<div class="quick">
+  <%- QA('/customers/new', 'userPlus', 'Register customer', 'New client and IDs', true) %>
+  <%- QA('/loans/redeem', 'redeem', 'Redemption', 'Scan a ticket, take payment') %>
+  <%- QA('/customers', 'search', 'Find a customer', 'Pawn an item or start a loan') %>
+  <%- QA('/payments/unmatched', 'inbox', 'Payments to match', 'Bank and mobile transfers') %>
+  <%- QA('/items', 'package', 'Item store', 'Everything in the bins') %>
+  <%- QA('/stock', 'clipboard', 'Stock count', 'Monthly bin count') %>
 </div>
-<div class="grid g2" style="margin-top:1rem">
-  <div class="panel"><h2>Customers maturing in the next 7 days</h2><%- include('partials/loantable', { rows: data.maturing, cols: ['maturity'] }) %></div>
-  <div class="panel"><h2>Items to return today</h2><%- include('partials/loantable', { rows: data.toReturn }) %>
-    <% if (data.handBack.length) { %><h3>Items to hand back (rejected or cancelled)</h3><%- include('partials/loantable', { rows: data.handBack }) %><% } %></div>
-  <div class="panel"><h2>Payments to match</h2>
-    <% if (!data.toMatch.length) { %><div class="empty">None waiting.</div><% } else { %>
-    <table><tr><th>Received</th><th>Reference</th><th class="num">Amount</th></tr>
-    <% data.toMatch.forEach(function (u) { %><tr><td><%= fd(u.date_received) %></td><td><%= u.reference %></td><td class="num"><%= K(u.amount) %></td></tr><% }) %></table>
-    <p><a href="/payments/unmatched">Match payments →</a></p><% } %>
-  </div>
-  <div class="panel"><h2>Approved — ready to release</h2><%- include('partials/loantable', { rows: data.toRelease }) %>
-    <h3>Drafts and returned applications</h3><%- include('partials/loantable', { rows: data.returned }) %></div>
-  <div class="panel"><h2>Loans in grace</h2><%- include('partials/loantable', { rows: data.grace, cols: ['grace'] }) %></div>
-  <div class="panel"><h2>Call tasks</h2>
-    <% if (!data.tasks.length) { %><div class="empty">No calls to make.</div><% } else { data.tasks.forEach(function (t) { %><p class="small"><%= t.title %></p><% }) %><p><a href="/tasks">Open call tasks →</a></p><% } %></div>
+<div class="kpis">
+  <%- KPI('/loans?status=paid', 'package', data.toReturn.length, 'Items to hand back (paid in full)', tone(data.toReturn.length)) %>
+  <%- KPI('/loans?status=approved', 'send', data.toRelease.length, 'Approved — money to release', tone(data.toRelease.length)) %>
+  <%- KPI('/payments/unmatched', 'inbox', data.toMatch.length, 'Payments to match', tone(data.toMatch.length)) %>
+  <%- KPI('/reports/maturity', 'clock', data.maturing.length, 'Due in the next 7 days', data.maturing.length ? 'attn' : '') %>
+  <%- KPI('/loans?status=in_grace', 'alert', data.grace.length, 'Loans in grace', tone(data.grace.length, 'bad')) %>
+  <%- KPI('/tasks', 'phone', data.tasks.length, 'Customers to call', tone(data.tasks.length)) %>
+</div>
+<div class="queues">
+  <%- include('partials/qhead', { ic: 'package', title: 'Items to hand back today', n: data.toReturn.length + data.handBack.length, hot: true }) %>
+    <% if (!data.toReturn.length && !data.handBack.length) { %><%- include('partials/allclear', { msg: 'No items waiting to be collected.' }) %><% } %>
+    <% data.toReturn.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>/return"><strong><%= l.loan_no %></strong> · <%= l.customer_name %><small>Paid in full — pull from the bin and hand back</small></a><% }) %>
+    <% data.handBack.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>/return"><strong><%= l.loan_no %></strong> · <%= l.customer_name %><small><%= STATUS[l.status] %> — hand the item back</small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/loans?status=paid', text: 'All paid loans' }) %>
+
+  <%- include('partials/qhead', { ic: 'send', title: 'Approved — ready to release', n: data.toRelease.length, hot: true }) %>
+    <% if (!data.toRelease.length) { %><%- include('partials/allclear', { msg: 'No approved loans waiting.' }) %><% } %>
+    <% data.toRelease.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>"><strong><%= l.loan_no %></strong> · <%= l.customer_name %> · <%= K(l.approved_amount) %><small>Print the pledge ticket for signing, then release the money</small></a><% }) %>
+    <% if (data.returned.length) { %><div class="qitem" style="background:#faf9f6"><strong>Drafts and returned applications</strong></div>
+    <% data.returned.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>"><strong><%= l.loan_no %></strong> · <%= l.customer_name %><small><%= STATUS[l.status] %></small></a><% }) %><% } %>
+  <%- include('partials/qfoot', { href: '/loans?status=applications', text: 'All applications' }) %>
+
+  <%- include('partials/qhead', { ic: 'clock', title: 'Due in the next 7 days', n: data.maturing.length }) %>
+    <% if (!data.maturing.length) { %><%- include('partials/allclear', { msg: 'No loans due this week.' }) %><% } else { %><%- include('partials/loantable', { rows: data.maturing, cols: ['maturity', 'compact'] }) %><% } %>
+  <%- include('partials/qfoot', { href: '/reports/maturity', text: 'Maturity list' }) %>
+
+  <%- include('partials/qhead', { ic: 'alert', title: 'Loans in grace', n: data.grace.length, hot: true }) %>
+    <% if (!data.grace.length) { %><%- include('partials/allclear', { msg: 'No loans in grace.' }) %><% } else { %><%- include('partials/loantable', { rows: data.grace, cols: ['grace', 'compact'] }) %><% } %>
+  <%- include('partials/qfoot', { href: '/loans?status=in_grace', text: 'All loans in grace' }) %>
+
+  <%- include('partials/qhead', { ic: 'inbox', title: 'Payments to match', n: data.toMatch.length, hot: true }) %>
+    <% if (!data.toMatch.length) { %><%- include('partials/allclear', { msg: 'Every transfer is matched.' }) %><% } %>
+    <% data.toMatch.forEach(function (u) { %><a class="qitem" href="/payments/unmatched"><strong><%= K(u.amount) %></strong> · <%= u.reference %><small>Received <%= fd(u.date_received) %><%= u.suggestions && u.suggestions.length ? ' · looks like loan ' + u.suggestions[0].loan_no : '' %></small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/payments/unmatched', text: 'Match payments' }) %>
+
+  <%- include('partials/qhead', { ic: 'phone', title: 'Customers to call', n: data.tasks.length, hot: true }) %>
+    <% if (!data.tasks.length) { %><%- include('partials/allclear', { msg: 'No calls to make.' }) %><% } %>
+    <% data.tasks.slice(0, 6).forEach(function (t) { %><a class="qitem" href="/tasks"><%= t.title %></a><% }) %>
+  <%- include('partials/qfoot', { href: '/tasks', text: 'All call tasks' }) %>
 </div>
 <% } %>
 
 <% if (is('cro')) { %>
-<div class="grid g4">
-  <div class="stat"><div class="n"><%= data.waiting.length %></div><div class="l">Applications waiting for valuation</div></div>
-  <div class="stat"><div class="n"><%= data.grace.length %></div><div class="l">Loans in grace</div></div>
-  <div class="stat"><div class="n"><%= data.toForfeit.length %></div><div class="l">Forfeitures to declare</div></div>
-  <div class="stat"><div class="n"><%= data.idChecks.length + data.duplicates.length %></div><div class="l">ID checks and duplicate reviews</div></div>
+<div class="quick">
+  <%- QA('/loans?status=submitted', 'approve', 'Value & decide', 'Applications waiting', true) %>
+  <%- QA('/customers', 'card', 'Verify IDs', 'Customers and their IDs') %>
+  <%- QA('/loans?status=in_grace', 'alert', 'Grace & forfeiture', 'Loans past maturity') %>
+  <%- QA('/aml', 'shield', 'AML flags', 'Review and report') %>
+  <%- QA('/reports/risk', 'chart', 'Risk report', 'Redeemed vs forfeited') %>
+  <%- QA('/admin/audit', 'list', 'Audit log', 'Every change, who and when') %>
 </div>
-<div class="grid g2" style="margin-top:1rem">
-  <div class="panel"><h2>Applications waiting for valuation and decision</h2><%- include('partials/loantable', { rows: data.waiting }) %></div>
-  <div class="panel"><h2>Forfeitures to declare</h2><p class="small muted">Grace period ended with money still owing.</p><%- include('partials/loantable', { rows: data.toForfeit, cols: ['grace'] }) %></div>
-  <div class="panel"><h2>Loans in grace</h2><%- include('partials/loantable', { rows: data.grace, cols: ['grace'] }) %></div>
-  <div class="panel"><h2>IDs to verify</h2>
-    <% if (!data.idChecks.length && !data.duplicates.length) { %><div class="empty">Nothing waiting.</div><% } %>
-    <% data.idChecks.forEach(function (x) { %><p><a href="/customers/<%= x.customer_id %>#ids"><%= x.customer_no %> · <%= x.name %></a> — <%= x.type_name %></p><% }) %>
-    <% data.duplicates.forEach(function (x) { %><p><a href="/customers/<%= x.id %>"><%= x.customer_no %> · <%= x.given_names %> <%= x.surname %></a> — <%- include('partials/badge', { s: 'duplicate_review', label: 'possible duplicate' }) %></p><% }) %>
-    <% if (data.waivers.length) { %><h3>Waivers to approve</h3><% data.waivers.forEach(function (w) { %><p><a href="/loans/<%= w.loan_id %>">Loan <%= w.loan_no %></a>: <%= K(w.amount) %> of <%= w.kind %> — <%= w.reason %></p><% }) %><% } %>
-    <% if (data.stockToSign.length) { %><h3>Stock counts to sign off</h3><% data.stockToSign.forEach(function (s) { %><p><a href="/stock/<%= s.id %>"><%= s.branch_name %> <%= s.period %></a> — <%= s.missing_count %> missing</p><% }) %><% } %>
-  </div>
-  <div class="panel" style="grid-column:1/-1"><h2>Redemption rate — last 12 months</h2>
-    <% const maxv = Math.max(1, ...data.trend.map(function (t) { return t.redeemed + t.forfeited; })); const W = 760, H = 190, bw = W / 12; %>
+<div class="kpis">
+  <%- KPI('/loans?status=submitted', 'approve', data.waiting.length, 'Applications to value and decide', tone(data.waiting.length)) %>
+  <%- KPI('/customers', 'card', data.idChecks.length + data.duplicates.length, 'ID checks and duplicate reviews', tone(data.idChecks.length + data.duplicates.length)) %>
+  <%- KPI('/loans?status=in_grace', 'alert', data.toForfeit.length, 'Forfeitures to declare', tone(data.toForfeit.length, 'bad')) %>
+  <%- KPI('/loans?status=in_grace', 'clock', data.grace.length, 'Loans in grace', data.grace.length ? 'attn' : '') %>
+  <%- KPI('/loans', 'money', data.waivers.length, 'Waivers to approve', tone(data.waivers.length)) %>
+  <%- KPI('/stock', 'clipboard', data.stockToSign.length, 'Stock counts to sign off', tone(data.stockToSign.length)) %>
+</div>
+<div class="queues">
+  <%- include('partials/qhead', { ic: 'approve', title: 'Applications to value and decide', n: data.waiting.length, hot: true }) %>
+    <% if (!data.waiting.length) { %><%- include('partials/allclear', { msg: 'No applications waiting.' }) %><% } %>
+    <% data.waiting.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>"><strong><%= l.loan_no %></strong> · <%= l.customer_name %> · asks <%= K(l.requested_amount) %><small>Inspect the item, grade it and decide</small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/loans?status=submitted', text: 'All submitted applications' }) %>
+
+  <%- include('partials/qhead', { ic: 'card', title: 'IDs to verify', n: data.idChecks.length + data.duplicates.length, hot: true }) %>
+    <% if (!data.idChecks.length && !data.duplicates.length) { %><%- include('partials/allclear', { msg: 'No IDs waiting.' }) %><% } %>
+    <% data.idChecks.forEach(function (x) { %><a class="qitem" href="/customers/<%= x.customer_id %>#ids"><strong><%= x.customer_no %></strong> · <%= x.name %><small><%= x.type_name %> — check it against the customer photos</small></a><% }) %>
+    <% data.duplicates.forEach(function (x) { %><a class="qitem" href="/customers/<%= x.id %>"><strong><%= x.customer_no %></strong> · <%= x.given_names %> <%= x.surname %><small>Possible duplicate profile — review</small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/customers', text: 'Customers' }) %>
+
+  <%- include('partials/qhead', { ic: 'alert', title: 'Forfeitures to declare', n: data.toForfeit.length, hot: true }) %>
+    <% if (!data.toForfeit.length) { %><%- include('partials/allclear', { msg: 'No grace periods have ended.' }) %><% } else { %><%- include('partials/loantable', { rows: data.toForfeit, cols: ['grace', 'compact'] }) %><% } %>
+  <%- include('partials/qfoot', { href: '/loans?status=in_grace', text: 'All loans in grace' }) %>
+
+  <%- include('partials/qhead', { ic: 'clock', title: 'Loans in grace', n: data.grace.length }) %>
+    <% if (!data.grace.length) { %><%- include('partials/allclear', { msg: 'No loans in grace.' }) %><% } else { %><%- include('partials/loantable', { rows: data.grace, cols: ['grace', 'compact'] }) %><% } %>
+  <%- include('partials/qfoot', {}) %>
+
+  <% if (data.waivers.length || data.stockToSign.length) { %>
+  <%- include('partials/qhead', { ic: 'money', title: 'Waivers and stock counts to approve', n: data.waivers.length + data.stockToSign.length, hot: true }) %>
+    <% data.waivers.forEach(function (w) { %><a class="qitem" href="/loans/<%= w.loan_id %>"><strong>Loan <%= w.loan_no %></strong> · waive <%= K(w.amount) %> of <%= w.kind %><small><%= w.reason %></small></a><% }) %>
+    <% data.stockToSign.forEach(function (s) { %><a class="qitem" href="/stock/<%= s.id %>"><strong>Stock count <%= s.period %></strong> · <%= s.branch_name %><small><%= s.missing_count %> missing — sign off</small></a><% }) %>
+  <%- include('partials/qfoot', {}) %>
+  <% } %>
+
+  <%- include('partials/qhead', { ic: 'trend', title: 'Redemption rate — last 12 months', cls: 'wide' }) %>
+    <div style="padding:.6rem 1rem">
+    <% const maxv = Math.max(1, ...data.trend.map(function (t) { return t.redeemed + t.forfeited; })); const W = 760, H = 170, bw = W / 12; %>
     <svg class="chart" viewBox="0 0 <%= W %> <%= H + 40 %>" role="img" aria-label="Loans redeemed and forfeited per month">
       <% data.trend.forEach(function (t, i) { const hr = (t.redeemed / maxv) * H, hf = (t.forfeited / maxv) * H; const share = t.redeemed + t.forfeited ? Math.round(t.redeemed * 100 / (t.redeemed + t.forfeited)) + '%' : '—'; %>
-        <rect x="<%= i * bw + 10 %>" y="<%= H - hr - hf + 10 %>" width="<%= bw - 20 %>" height="<%= hf %>" fill="#c0553f"><title><%= t.month %>: <%= t.forfeited %> forfeited</title></rect>
-        <rect x="<%= i * bw + 10 %>" y="<%= H - hr + 10 %>" width="<%= bw - 20 %>" height="<%= hr %>" fill="#0f5c4d"><title><%= t.month %>: <%= t.redeemed %> redeemed</title></rect>
+        <rect x="<%= i * bw + 12 %>" y="<%= H - hr - hf + 10 %>" width="<%= bw - 24 %>" height="<%= hf %>" rx="3" fill="#c0553f"><title><%= t.month %>: <%= t.forfeited %> forfeited</title></rect>
+        <rect x="<%= i * bw + 12 %>" y="<%= H - hr + 10 %>" width="<%= bw - 24 %>" height="<%= hr %>" rx="3" fill="#0f5c4d"><title><%= t.month %>: <%= t.redeemed %> redeemed</title></rect>
         <text x="<%= i * bw + bw / 2 %>" y="<%= H + 25 %>" text-anchor="middle" font-size="11" fill="#555"><%= t.month.slice(5) %>/<%= t.month.slice(2, 4) %></text>
         <text x="<%= i * bw + bw / 2 %>" y="<%= H + 38 %>" text-anchor="middle" font-size="10" fill="#0f5c4d"><%= share %></text>
       <% }) %>
     </svg>
-    <p class="small muted"><span style="color:#0f5c4d">■</span> redeemed &nbsp; <span style="color:#c0553f">■</span> forfeited — by month the loan closed; the percentage is the redeemed share.</p>
-  </div>
+    <p class="small muted"><span style="color:#0f5c4d">■</span> redeemed &nbsp; <span style="color:#c0553f">■</span> forfeited — by the month the loan closed; the percentage is the redeemed share.</p>
+    </div>
+  <%- include('partials/qfoot', { href: '/reports/risk', text: 'Risk report' }) %>
 </div>
 <% } %>
 
-<% if (is('admin')) { const lp = Math.min(100, Math.round(data.lent.s * 100 / Math.max(1, data.lendTarget))), cp = Math.min(100, Math.round(data.collected * 100 / Math.max(1, data.collectTarget))); %>
-<div class="grid g4">
-  <div class="stat"><div class="l">Money lent in <%= data.month %></div><div class="n"><%= K(data.lent.s) %></div><div class="meter"><span style="width:<%= lp %>%"></span></div><div class="l"><%= lp %>% of target <%= K(data.lendTarget) %> · <%= data.lent.n %> loans</div></div>
-  <div class="stat"><div class="l">Collected in <%= data.month %></div><div class="n"><%= K(data.collected) %></div><div class="meter"><span style="width:<%= cp %>%"></span></div><div class="l"><%= cp %>% of target <%= K(data.collectTarget) %></div></div>
-  <div class="stat"><div class="n"><%= data.forSale.length %></div><div class="l">Forfeited items for sale</div></div>
-  <div class="stat"><div class="n"><%= data.expiring.length %></div><div class="l">Loans expiring this week</div></div>
+<% if (is('admin')) { const ML = new Date(data.month + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }); const lp = Math.min(100, Math.round(data.lent.s * 100 / Math.max(1, data.lendTarget))), cp = Math.min(100, Math.round(data.collected * 100 / Math.max(1, data.collectTarget))); %>
+<div class="quick">
+  <%- QA('/admin/users', 'user', 'Users', 'Create, unlock, reset passwords', true) %>
+  <%- QA('/admin/settings', 'sliders', 'Settings & rates', 'Rates, ticket text, bank details') %>
+  <%- QA('/sales', 'tag', 'Forfeited items', 'Reserve, auction, sale') %>
+  <%- QA('/bins', 'grid', 'Bins', 'What is in each bin') %>
+  <%- QA('/reports', 'chart', 'Reports', 'Excel and PDF') %>
+  <%- QA('/admin/system', 'server', 'Nightly job & backups', 'Run now, test restore') %>
 </div>
-<% if (data.reversals || data.locked.length || data.amlOpen) { %><div class="alert alert-warn" style="margin-top:1rem">
-  <% if (data.reversals) { %><div><a href="/payments/reversals"><%= data.reversals %> payment reversal(s)</a> waiting for your approval.</div><% } %>
-  <% if (data.amlOpen) { %><div><a href="/aml"><%= data.amlOpen %> open AML flag(s)</a>.</div><% } %>
-  <% data.locked.forEach(function (u) { %><div>Account <strong><%= u.username %></strong> is locked — <a href="/admin/users">unlock</a>.</div><% }) %>
-</div><% } %>
-<div class="grid g2" style="margin-top:1rem">
-  <div class="panel"><h2>Forfeited items for sale</h2>
-    <% if (!data.forSale.length) { %><div class="empty">None.</div><% } else { %><table><tr><th>Loan</th><th>Item</th><th>Status</th><th class="num">Owed</th></tr>
-    <% data.forSale.forEach(function (s) { %><tr><td><a href="/loans/<%= s.loan_id %>"><%= s.loan_no %></a></td><td><%= s.item_no %> <%= s.item %></td><td><%- include('partials/badge', { s: s.status }) %></td><td class="num"><%= K(s.owing_at_forfeiture) %></td></tr><% }) %></table><p><a href="/sales">Manage sales →</a></p><% } %></div>
-  <div class="panel"><h2>Loans expiring this week</h2>
-    <% if (!data.expiring.length) { %><div class="empty">None.</div><% } else { %><table><tr><th>Loan</th><th>Expiry</th><th>Ready?</th></tr>
-    <% data.expiring.forEach(function (l) { %><tr><td><a href="/loans/<%= l.id %>"><%= l.loan_no %></a></td><td><%= fd(l.expiry_date) %></td><td><% if (l.eligible) { %><%- include('partials/badge', { s: 'ok', label: 'ready' }) %><% } else { %><span class="small"><%= l.reasons.join(' ') %></span><% } %></td></tr><% }) %></table><% } %>
-    <p><a href="/archive/expiring">Expiring loans screen →</a></p></div>
-  <div class="panel"><h2>Stock count — <%= data.month %></h2>
+<div class="kpis">
+  <div class="kpi good"><span class="ki"><%- icon('send', 19) %></span><span style="flex:1"><span class="n"><%= K(data.lent.s) %></span><span class="l">Lent in <%= ML %> · <%= lp %>% of <%= K(data.lendTarget) %></span><span class="meter"><span style="width:<%= lp %>%"></span></span></span></div>
+  <div class="kpi good"><span class="ki"><%- icon('money', 19) %></span><span style="flex:1"><span class="n"><%= K(data.collected) %></span><span class="l">Collected in <%= ML %> · <%= cp %>% of <%= K(data.collectTarget) %></span><span class="meter"><span style="width:<%= cp %>%"></span></span></span></div>
+  <%- KPI('/sales', 'tag', data.forSale.length, 'Forfeited items for sale', tone(data.forSale.length)) %>
+  <%- KPI('/archive/expiring', 'clock', data.expiring.length, 'Loans expiring this week', data.expiring.length ? 'attn' : '') %>
+  <%- KPI('/payments/reversals', 'undo', data.reversals, 'Reversals to approve', tone(data.reversals)) %>
+  <%- KPI('/aml', 'shield', data.amlOpen, 'Open AML flags', tone(data.amlOpen, 'bad')) %>
+</div>
+<% if (data.locked.length) { %><div class="alert alert-warn"><% data.locked.forEach(function (u) { %><div>Account <strong><%= u.username %></strong> is locked after wrong sign-in attempts — <a href="/admin/users">unlock</a>.</div><% }) %></div><% } %>
+<div class="queues">
+  <%- include('partials/qhead', { ic: 'tag', title: 'Forfeited items for sale', n: data.forSale.length, hot: true }) %>
+    <% if (!data.forSale.length) { %><%- include('partials/allclear', { msg: 'No forfeited items.' }) %><% } %>
+    <% data.forSale.forEach(function (s) { %><a class="qitem" href="/sales"><strong><%= s.item_no %></strong> <%= s.item %> · loan <%= s.loan_no %><small><%= String(s.status).replace(/_/g, ' ') %> · owed <%= K(s.owing_at_forfeiture) %></small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/sales', text: 'Manage sales' }) %>
+
+  <%- include('partials/qhead', { ic: 'clock', title: 'Loans expiring this week', n: data.expiring.length }) %>
+    <% if (!data.expiring.length) { %><%- include('partials/allclear', { msg: 'Nothing to archive this week.' }) %><% } %>
+    <% data.expiring.forEach(function (l) { %><a class="qitem" href="/loans/<%= l.id %>"><strong><%= l.loan_no %></strong> · expires <%= fd(l.expiry_date) %><small><%= l.eligible ? 'Ready — the nightly job will archive it' : l.reasons.join(' ') %></small></a><% }) %>
+  <%- include('partials/qfoot', { href: '/archive/expiring', text: 'Expiring loans' }) %>
+
+  <%- include('partials/qhead', { ic: 'clipboard', title: 'Stock count — ' + ML }) %>
     <table><tr><th>Branch</th><th>Status</th><th class="num">Missing</th></tr>
-    <% data.stock.forEach(function (b) { %><tr><td><%= b.name %></td><td><% if (b.status) { %><%- include('partials/badge', { s: b.status }) %><% } else { %><span class="badge b-pending">not started</span><% } %></td><td class="num"><%= b.missing ?? '' %></td></tr><% }) %></table></div>
-  <div class="panel"><h2>Nightly job</h2>
-    <% if (data.lastRun) { %><p>Last run for <strong><%= fd(data.lastRun.run_date) %></strong> finished <%= fts(data.lastRun.finished_at) %>.</p><p class="small muted"><%= data.lastRun.summary %></p><% } else { %><p class="empty">Not run yet.</p><% } %>
-    <p><a href="/admin/system">Nightly job & backups →</a></p></div>
+    <% data.stock.forEach(function (b) { %><tr><td><%= b.name %></td><td><% if (b.status) { %><%- include('partials/badge', { s: b.status }) %><% } else { %><span class="badge b-pending">not started</span><% } %></td><td class="num"><%= b.missing ?? '' %></td></tr><% }) %></table>
+  <%- include('partials/qfoot', { href: '/stock', text: 'Stock counts' }) %>
+
+  <%- include('partials/qhead', { ic: 'server', title: 'Nightly job' }) %>
+    <div style="padding:.6rem 1rem">
+    <% if (data.lastRun) { %><p style="margin-top:0">Last run for <strong><%= fd(data.lastRun.run_date) %></strong>, finished <%= fts(data.lastRun.finished_at) %>.</p><p class="small muted"><%= data.lastRun.summary %></p><% } else { %><p class="muted">Not run yet.</p><% } %>
+    </div>
+  <%- include('partials/qfoot', { href: '/admin/system', text: 'Nightly job & backups' }) %>
 </div>
 <% } %>
 <%- include('partials/footer') %>

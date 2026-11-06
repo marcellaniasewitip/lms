@@ -101,6 +101,7 @@ app.use((req, res, next) => {
   Object.assign(res.locals, {
     user: null, csrf: '', flash, old, path: req.path, query: req.query, today: dates.today(), dates, money,
     fd: dates.fmt, fts: dates.fmtTs, K: money.fmt, STATUS: loans.STATUS, CHANNELS: loans.CHANNELS, ROLE_LABEL, CUSTODY: items.CUSTODY_LABEL,
+    icon: require('./lib/icons').icon,
     lender: settings.get('lender_name'), idleMinutes: config.IDLE_MINUTES, appVersion: VERSION, appStarted: STARTED,
     // Phone numbers shown and pre-filled as (+675) 7123-4567; forms check the same format.
     fmtPhone: (s) => (phone.normalize(s) ? phone.format(s) : s || ''),

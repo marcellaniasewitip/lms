@@ -39,6 +39,9 @@ test('customer onboarding: two-ID rule and duplicate check', () => {
   const t = '2026-11-02';
   customerId = fx.makeCustomer(svc, lo, cro, t, { surname: 'Kila', given: 'John Peter', dob: '14/05/1988', mobile: '7234 5678', nid: 'NID12345678', second: 'EMP-4821' });
   assert.equal(customers.get(customerId).verification_status, 'verified');
+  // No SMS check of the customer's mobile: the profile is complete without one.
+  assert.equal(customers.get(customerId).mobile_verified_at, null);
+  assert.deepEqual(customers.profileComplete(customers.get(customerId)), []);
   assert.ok(customers.loanReadiness(customerId, t).ok);
   // Duplicate: same mobile -> profile held for the CRO and blocked from loans
   fx.makeCustomer(svc, lo, cro, t, { surname: 'Other', given: 'Person', dob: '01/01/1990', mobile: '72345678', nid: 'X1', second: 'Y1' });
@@ -232,4 +235,16 @@ test('two-person rule, branch scoping, stock count and audit immutability', () =
   assert.throws(() => db.get().prepare('UPDATE audit_log SET action = ? WHERE id = 1').run('x'), /read-only/);
   assert.throws(() => db.get().prepare('DELETE FROM audit_log WHERE id = 1').run(), /retention/);
   void lo2;
+});
+
+test('the company name is Kinaboy Limited, also on databases saved with the earlier placeholder name', () => {
+  settings.set('lender_name', 'Kina Pledge Finance Ltd');
+  settings.set('lender_slogan', 'Fast cash, your goods kept safe');
+  settings.seedReferenceData();
+  assert.equal(settings.get('lender_name'), 'Kinaboy Limited');
+  assert.equal(settings.get('lender_slogan'), 'When it matters');
+  // a name the Admin chose is never changed
+  settings.set('lender_name', 'Kinaboy Limited (PNG)');
+  settings.seedReferenceData();
+  assert.equal(settings.get('lender_name'), 'Kinaboy Limited (PNG)');
 });

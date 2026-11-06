@@ -20,8 +20,6 @@ function makeCustomer(svc, lo, cro, today, p) {
     bank_name: 'BSP', bank_account: p.bank || '1000123456', mobile_banking: '', sms_language: p.lang || 'en',
     consent_terms: 'on', consent_data: 'on', consent_forfeit: 'on',
   }, { photo1: [file('photo-1.png')], photo2: [file('photo-2.png')] });
-  const code = customers.sendMobileCode(ctxFor(lo, today), id);
-  customers.confirmMobileCode(ctxFor(lo, today), id, code);
   const types = customers.idTypes();
   const nid = types.find((t) => t.name.startsWith('PNG National ID'));
   const sec = types.find((t) => t.name === (p.secondType || 'Employer staff ID card'));

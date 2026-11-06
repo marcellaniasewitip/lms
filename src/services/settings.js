@@ -2,8 +2,8 @@
 const db = require('../db');
 
 const DEFAULTS = {
-  lender_name: 'Kina Pledge Finance Ltd',
-  lender_slogan: 'Fast cash, your goods kept safe',
+  lender_name: 'Kinaboy Limited',
+  lender_slogan: 'When it matters',
   min_loan: 2000, // toea = K20.00
   term_months: 3,
   rate_options: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
@@ -139,9 +139,14 @@ function seedReferenceData() {
   }
   if (!d.prepare('SELECT 1 FROM branches LIMIT 1').get()) {
     d.prepare('INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES (?,?,?,?,?,?,?)')
-      .run('POM', 'Port Moresby – Waigani', '+675 325 0000', 'waigani@kinapledge.com.pg', 'PO Box 1000, Boroko, NCD',
-        'Section 12, Lot 5, Wards Road, Hohola, NCD', now);
+      .run('POM', 'Kinaboy 1 – Port Moresby', '+675 8305 8500', 'admin@kinaboy.com', 'P.O.Box 437, Brian Bell Plaza, NCD, Port Moresby',
+        'Sec 496, Lot 14 Kawai Dr, Port Moresby 134', now);
   }
+  // The company was renamed Kinaboy Limited: replace the earlier placeholder name and slogan if still saved.
+  const saved = (k) => { const r = d.prepare('SELECT value FROM settings WHERE key = ?').get(k); return r && JSON.parse(r.value); };
+  if (saved('lender_name') === 'Kina Pledge Finance Ltd') set('lender_name', 'Kinaboy Limited');
+  if (saved('lender_slogan') === 'Fast cash, your goods kept safe') set('lender_slogan', 'When it matters');
+  if (saved('company_bank_account_name') === 'Kina Pledge Finance Ltd') set('company_bank_account_name', 'Kinaboy Limited');
   // Numbered bins (store bins, key bins, yard bays) for any branch that has none.
   const bins = require('./bins');
   for (const b of d.prepare('SELECT id FROM branches').all()) bins.seedBranch(b.id);

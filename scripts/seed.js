@@ -27,9 +27,9 @@ db.open();
 settings.seedReferenceData();
 const d = db.get();
 settings.set('company_bank_name', 'BSP'); settings.set('company_bank_branch', 'Waigani');
-settings.set('company_bank_account_name', 'Kina Pledge Finance Ltd'); settings.set('company_bank_account_no', '1001234567');
+settings.set('company_bank_account_name', 'Kinaboy Limited'); settings.set('company_bank_account_no', '1001234567');
 settings.set('company_mobile_banking', '(+675) 7000-1234');
-d.prepare(`INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES ('LAE','Lae – Top Town','+675 472 0000','lae@kinapledge.com.pg','PO Box 2200, Lae, Morobe','Section 5, Lot 9, Coronation Drive, Top Town, Lae',?)`).run(dates.nowIso());
+d.prepare(`INSERT INTO branches(code, name, phone, email, postal_address, physical_address, created_at) VALUES ('LAE','Kinaboy 2 – Lae','+675 472 0000','lae@kinaboy.com','PO Box 2200, Lae, Morobe','Section 5, Lot 9, Coronation Drive, Top Town, Lae',?)`).run(dates.nowIso());
 require('../src/services/bins').seedBranch(2); // default numbered bins for the Lae branch
 
 const PW = 'Demo#Pass2026';
@@ -153,7 +153,6 @@ at(0, () => {
     home_district: 'Lorengau', home_village: 'Pere', mobile: '(+675) 8223-4511', addr_province: 'National Capital District', addr_district: 'Moresby South',
     addr_town: 'Boroko', addr_section_lot: 'Section 41, Lot 7', po_box: 'P.O.Box 1201, Boroko, NCD', addr_landmark: 'Opposite Boroko Foodworld', residence_proof_type: 'Rental letter', sms_language: 'en', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
   }, { photo1: [fx.file('photo.png')] });
-  const code = customers.sendMobileCode(C(lo, T), id); customers.confirmMobileCode(C(lo, T), id, code);
   const types = customers.idTypes();
   customers.addId(C(lo, T), id, { id_type_id: types[1].id, number: 'P1234567', issue_date: '10/10/2021', expiry_date: '10/10/2031', name_on_id: 'Esther Kumul', dob_on_id: '12/02/1993' }, { front: [fx.file()] });
   customers.addId(C(lo, T), id, { id_type_id: types[3].id, number: 'EMP-NBC-552', issue_date: '01/01/2024', expiry_date: '01/01/2027', name_on_id: 'Ester Kumul', dob_on_id: '12/02/1993' }, { front: [fx.file()] });

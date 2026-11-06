@@ -55,7 +55,9 @@ r.get('/', (req, res) => {
     data.amlOpen = d.prepare("SELECT COUNT(*) n FROM aml_flags WHERE status = 'open'").get().n;
     data.lastRun = d.prepare("SELECT * FROM job_runs WHERE job = 'nightly' ORDER BY id DESC LIMIT 1").get();
   }
-  res.render('dashboard', { title: 'Dashboard', data });
+  const hour = (new Date().getUTCHours() + 10) % 24; // Port Moresby time
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  res.render('dashboard', { title: 'Dashboard', data, greeting });
 });
 
 // Redeemed against forfeited by month of closing, last 12 months.

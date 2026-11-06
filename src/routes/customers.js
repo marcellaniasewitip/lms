@@ -4,7 +4,6 @@ const db = require('../db');
 const customers = require('../services/customers');
 const items = require('../services/items');
 const files = require('../services/files');
-const config = require('../config');
 const { checkBranch } = require('../lib/ctx');
 const { Forbidden } = require('../lib/errors');
 
@@ -26,7 +25,7 @@ function media(req) {
 r.post('/', only('loan_officer'), (req, res) => {
   const { id, duplicates } = customers.create(req.ctx(), req.body, media(req));
   if (duplicates.length) res.flash('error', 'Possible duplicate profile: it has been sent to the CRO and is blocked until reviewed.', duplicates.map((d) => `${d.why} as ${d.customer_no}`));
-  else res.flash('success', 'Customer registered. Next: confirm the mobile number and add two IDs.');
+  else res.flash('success', 'Customer registered. Next: add the two IDs.');
   res.redirect(`/customers/${id}`);
 });
 
@@ -47,7 +46,6 @@ r.get('/:id', (req, res) => {
     photos: files.list('customer_photo', c.id),
     readiness: customers.loanReadiness(c.id, req.res.locals.today), complete: customers.profileComplete(c),
     idTypes: customers.idTypes(), mobile: customers.displayMobile(c.mobile),
-    demoCode: config.SHOW_CODES ? req.session.demoMobileCode && req.session.demoMobileCode[c.id] : null,
     aml: db.get().prepare("SELECT * FROM aml_flags WHERE customer_id = ? AND status = 'open'").all(c.id),
   });
 });
@@ -59,19 +57,6 @@ r.get('/:id/edit', only('loan_officer', 'cro'), (req, res) => {
 r.post('/:id', only('loan_officer', 'cro'), (req, res) => {
   customers.update(req.ctx(), Number(req.params.id), req.body, media(req));
   res.flash('success', 'Profile saved.');
-  res.redirect(`/customers/${req.params.id}`);
-});
-
-r.post('/:id/mobile/send', only('loan_officer'), (req, res) => {
-  const code = customers.sendMobileCode(req.ctx(), Number(req.params.id));
-  req.session.demoMobileCode = { ...(req.session.demoMobileCode || {}), [req.params.id]: code };
-  res.flash('success', 'Code sent by SMS. Ask the customer to read it out.');
-  res.redirect(`/customers/${req.params.id}#mobile`);
-});
-r.post('/:id/mobile/confirm', only('loan_officer'), (req, res) => {
-  customers.confirmMobileCode(req.ctx(), Number(req.params.id), req.body.code);
-  if (req.session.demoMobileCode) delete req.session.demoMobileCode[req.params.id];
-  res.flash('success', 'Mobile number confirmed.');
   res.redirect(`/customers/${req.params.id}`);
 });
 

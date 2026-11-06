@@ -102,6 +102,12 @@
     netIn.addEventListener('input', upd); upd();
   }
 
+  // Phone and tablet menu: the menu button slides the side menu in; tapping outside closes it.
+  document.querySelectorAll('[data-nav-toggle]').forEach((b) => b.addEventListener('click', () => {
+    const open = document.body.classList.toggle('nav-open');
+    document.querySelectorAll('button[data-nav-toggle]').forEach((x) => x.setAttribute('aria-expanded', String(open)));
+  }));
+
   // Autofocus scan fields (barcode scanners type then press Enter).
   const scan = document.querySelector('[data-scan]');
   if (scan) scan.focus();

@@ -1,0 +1,3 @@
+<section class="queue <%= typeof cls !== 'undefined' ? cls : '' %>">
+<header><%- icon(ic) %><h2><%= title %></h2><% if (typeof n !== 'undefined' && n !== null) { %><span class="count <%= n > 0 && typeof hot !== 'undefined' && hot ? 'hot' : '' %>"><%= n %></span><% } %></header>
+<div class="qbody">

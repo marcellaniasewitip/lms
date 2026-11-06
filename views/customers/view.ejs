@@ -45,13 +45,7 @@
 
 <div class="panel" id="mobile">
   <h2>Mobile <%= mobile %> <%= c.mobile_network ? '(' + c.mobile_network + ')' : '' %></h2>
-  <% if (c.mobile_verified_at) { %><p><%- include('../partials/badge', { s: 'verified', label: 'Confirmed' }) %> by SMS code on <%= fts(c.mobile_verified_at) %></p>
-  <% } else if (is('loan_officer')) { %>
-    <p>Not yet confirmed. Send a code and ask the customer to read it from their phone.</p>
-    <form method="post" action="/customers/<%= c.id %>/mobile/send" class="inline"><%- include('../partials/csrf') %><button class="btn secondary small">Send SMS code</button></form>
-    <% if (demoCode) { %><div class="alert alert-warn small" style="margin-top:.5rem">Training mode (no SMS gateway): the code sent is <span class="mono"><%= demoCode %></span></div><% } %>
-    <form method="post" action="/customers/<%= c.id %>/mobile/confirm" class="f" style="max-width:260px"><%- include('../partials/csrf') %><label>Code read out by the customer</label><input name="code" inputmode="numeric" maxlength="6" required><div class="actions"><button class="btn small">Confirm</button></div></form>
-  <% } else { %><p class="muted">Not yet confirmed.</p><% } %>
+  <% if (c.second_phone || c.email) { %><p class="small"><%= c.second_phone ? 'Second number ' + fmtPhone(c.second_phone) : '' %><%= c.second_phone && c.email ? ' · ' : '' %><%= c.email || '' %></p><% } %>
   <% if (is('cro')) { %>
   <h3>Customer status (CRO)</h3>
   <form method="post" action="/customers/<%= c.id %>/status" class="f"><%- include('../partials/csrf') %>

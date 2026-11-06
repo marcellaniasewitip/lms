@@ -58,14 +58,14 @@
   <% if (expired) { %><div class="expired-mark">EXPIRED</div><% } %>
   <% if (replacement) { %><div class="stamp">REPLACEMENT</div><% } %>
   <div class="copyline noprint-hide"><span class="copy"><%= copy %></span><% if (t) { %> Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
-  <div class="brand"><span class="bname"><%= t0.lender_name %></span><% if (t0.lender_slogan) { %><span class="bar">|</span><span class="slogan"><%= t0.lender_slogan %></span><% } %></div>
+  <div class="brand"><span class="bname"><%= cur.lender_name %></span><% if (cur.lender_slogan) { %><span class="bar">|</span><span class="slogan"><%= cur.lender_slogan %></span><% } %></div>
   <div class="ptitle">PLEDGE TICKET FOR GOODS DETAILS IN SCHEDULE 1 – ATTACHED ("the Goods")</div>
   <div class="psub">Required by the Pawnbrokers Act 1951 ("PBA")</div>
 
   <div class="block">
     <div class="bl">Our details</div>
     <div class="kv2">
-      <span>Name:</span><span><%= t0.lender_name %> — <%= branch.name %> ("we", "us", "our")</span>
+      <span>Name:</span><span><%= branch.name %> ("we", "us", "our")</span>
       <span>Phone:</span><span><%= branch.phone %></span>
       <span>Email:</span><span><%= branch.email %></span>
       <span>Postal Address:</span><span><%= branch.postal_address %><br><em>This is where you can redeem your goods.</em></span>
@@ -135,7 +135,7 @@
 
 <div class="sheet">
   <% if (expired) { %><div class="stamp-top">EXPIRED</div><% } %>
-  <div class="hdr"><div><h1>Disclosure Statement</h1><div>Contract <%= l.loan_no %> · <%= t0.lender_name %></div></div><span class="copy"><%= copy %></span></div>
+  <div class="hdr"><div><h1>Disclosure Statement</h1><div>Contract <%= l.loan_no %> · <%= current.lender_name %></div></div><span class="copy"><%= copy %></span></div>
   <table class="t" style="margin-top:8px">
     <tr><th>Amount advanced</th><td><%= K(fig.amount) %></td></tr>
     <tr><th>Weekly interest rate</th><td><%= l.weekly_rate %>% a week on the principal still owed (set by the item's quality grade <%= l.rate_grade %>)</td></tr>

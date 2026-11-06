@@ -172,13 +172,12 @@ function update(ctx, id, data, media = {}) {
   const errs = [...enteredPhoneProblems(input), ...validate(c, today(ctx))];
   if (errs.length) throw new RuleError('Please fix the customer profile.', [...new Set(errs)]);
   tidyPhones(c);
-  const mobileChanged = c.mobile !== before.mobile;
   const nameNorm = names.norm(`${c.given_names} ${c.surname}`);
   const d = db.get();
   d.transaction(() => {
     const sets = EDITABLE.map((k) => `${k} = @${k}`).join(', ');
     d.prepare(`UPDATE customers SET ${sets}, name_norm = @name_norm, mobile_norm = @mobile, updated_at = @ts
-      ${mobileChanged ? ', mobile_verified_at = NULL' : ''} WHERE id = @id`).run({
+      WHERE id = @id`).run({
       ...Object.fromEntries(EDITABLE.map((k) => [k, c[k] ?? null])), sms_language: c.sms_language === 'tpi' ? 'tpi' : 'en',
       name_norm: nameNorm, ts: dates.nowIso(), id,
     });
@@ -194,25 +193,8 @@ function update(ctx, id, data, media = {}) {
   })();
 }
 
-function sendMobileCode(ctx, id) {
-  requireRole(ctx, 'loan_officer');
-  const c = get(id);
-  checkBranch(ctx, c.branch_id);
-  const code = randomCode(6);
-  db.get().prepare('UPDATE customers SET mobile_code_hash = ?, mobile_code_expires = ? WHERE id = ?')
-    .run(sha256(code + c.id), new Date(Date.now() + 10 * 60000).toISOString(), id);
-  notify.sms('mobile_code', { to: c.mobile, language: c.sms_language, customerId: id, vars: { code } });
-  audit.log(ctx, 'send_mobile_code', 'customer', id);
-  return code;
-}
-function confirmMobileCode(ctx, id, code) {
-  requireRole(ctx, 'loan_officer');
-  const c = get(id);
-  rule(c.mobile_code_hash && c.mobile_code_expires > dates.nowIso(), 'The code has expired. Send a new code.');
-  rule(sha256(String(code).trim() + c.id) === c.mobile_code_hash, 'The code does not match.');
-  db.get().prepare('UPDATE customers SET mobile_verified_at = ?, mobile_code_hash = NULL WHERE id = ?').run(dates.nowIso(), id);
-  audit.log(ctx, 'mobile_confirmed', 'customer', id, null, { mobile: c.mobile });
-}
+// The customer's mobile number is recorded as given; it is not confirmed by an SMS code
+// (removed at the lender's request).
 
 // ---------- Identity documents ----------
 function idTypes(activeOnly = true) { return db.get().prepare(`SELECT * FROM id_types ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY id`).all(); }
@@ -308,7 +290,6 @@ function twoIdRule(customerId, onDate) {
 
 function profileComplete(c) {
   const reasons = validate(c, dates.today()).filter((e) => !e.includes('18'));
-  if (!c.mobile_verified_at) reasons.push('Mobile number not yet confirmed by SMS code.');
   if (!files.list('customer_photo', c.id).length) reasons.push('Customer photo missing (upload Photo 1).');
   if (!c.consent_terms_at || !c.consent_data_at || !c.consent_forfeit_at) reasons.push('Consents missing.');
   return reasons;
@@ -385,7 +366,7 @@ function bankFor(ctx, c) {
 }
 
 module.exports = {
-  PROVINCES, RESIDENCE_PROOF, REQUIRED, get, fullName, create, update, sendMobileCode, confirmMobileCode, idTypes, ids, addId, reviewId,
+  PROVINCES, RESIDENCE_PROOF, REQUIRED, get, fullName, create, update, idTypes, ids, addId, reviewId,
   twoIdRule, profileComplete, loanReadiness, recomputeVerification, resolveDuplicate, setStatus, search, idNumberFor, bankFor,
   normMobile, displayMobile, NETWORKS: phone.NAMES,
 };

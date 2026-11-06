@@ -40,7 +40,7 @@ function nightlyFor(onDate, triggeredBy = null) {
         loans.notifyCustomer('grace_started', l, { total: tot, graceEnd: dates.fmt(l.grace_end_date) });
         const c = customers.get(l.customer_id);
         notify.task({ type: 'call', loanId: l.id, customerId: c.id, branchId: l.branch_id, role: 'loan_officer', dueDate: onDate,
-          title: `Call ${customers.fullName(c)} (${customers.displayMobile(c.mobile)}): loan ${l.loan_no} in grace; item forfeited on ${dates.fmt(l.grace_end_date)} unless ${tot} is paid` });
+          title: `Call ${customers.fullName(c)} on ${customers.displayMobile(c.mobile)}: loan ${l.loan_no} in grace; item forfeited on ${dates.fmt(l.grace_end_date)} unless ${tot} is paid` });
         notify.inApp({ userId: l.loan_officer_id, title: `Loan ${l.loan_no} is in grace`, body: `Phone the customer. ${tot} owing.`, link: `/loans/${l.id}` });
         notify.inApp({ role: 'cro', branchId: l.branch_id, title: `Loan ${l.loan_no} is in grace`, body: `Grace ends ${dates.fmt(l.grace_end_date)}`, link: `/loans/${l.id}` });
         s.grace++;
