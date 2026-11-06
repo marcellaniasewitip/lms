@@ -146,7 +146,8 @@
   <details class="action"><summary>Lost ticket — issue a replacement</summary><div>
     <p class="small">Only after the pledger shows a current passport, driver's licence or other photo ID. The old ticket is cancelled.</p>
     <form method="post" action="/loans/<%= l.id %>/ticket/replace" class="f"><%- include('../partials/csrf') %>
-      <div class="row"><div><label>Photo ID shown</label><select name="id_record_id"><% ids.filter(function (x) { return x.is_photo_id; }).forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %> ****<%= x.number_last4 %></option><% }) %></select></div><div><label>Number on the ID shown</label><input name="id_number_shown" required autocomplete="off"></div></div>
+      <div class="row"><div><label>Photo ID shown</label><select name="id_record_id"><% ids.filter(function (x) { return x.is_photo_id; }).forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %><%= x.number_last4 ? ' ****' + x.number_last4 : '' %></option><% }) %></select></div></div>
+      <label class="check"><input type="checkbox" name="id_confirmed" value="1" required> I compared the photo ID shown with its scan on file and it is the same ID.</label>
       <label>Reason</label><input name="reason" value="Ticket lost" required><div class="actions"><button class="btn small">Issue replacement</button></div></form></div></details>
   <% } %>
   <% } %>

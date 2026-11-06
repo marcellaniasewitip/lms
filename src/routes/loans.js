@@ -150,7 +150,8 @@ function ticketData(req, l) {
   const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'held on file (shown to the CRO only)') : '—' }));
   return {
     l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
-    idText: 'ID #: ' + ordered.map((x) => customers.idNumberFor({ user: { role: 'cro' } }, x)).join(' / '),
+    idText: ordered.every((x) => x.number_enc) ? 'ID #: ' + ordered.map((x) => customers.idNumberFor({ user: { role: 'cro' } }, x)).join(' / ')
+      : ordered.map((x) => (x.number_enc ? `${x.type_name} ${customers.idNumberFor({ user: { role: 'cro' } }, x)}` : x.type_name)).join(' / '),
     bank: require('../services/settings').companyBank(), current: settings.all(),
   };
 }
@@ -211,6 +212,7 @@ r.get('/:id/return', only('loan_officer'), (req, res) => {
   res.render('loans/return', {
     title: `Return item — loan ${l.loan_no}`, l, c: customers.get(l.customer_id), lis: loans.loanItems(l.id),
     ids: customers.ids(l.customer_id).filter((x) => x.status === 'accepted'), photos: (id) => files.list('item', id).filter((f) => f.kind !== 'ownership'),
+    scans: Object.fromEntries(customers.ids(l.customer_id).map((x) => [x.id, files.list('customer_id', x.id)])),
     handback: ['rejected', 'cancelled'].includes(l.status), owing: loans.total(l),
   });
 });

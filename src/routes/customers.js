@@ -66,7 +66,7 @@ r.post('/:id/ids', only('loan_officer'), (req, res) => {
   res.redirect(`/customers/${req.params.id}#ids`);
 });
 r.post('/:id/ids/:idId/review', only('cro'), (req, res) => {
-  customers.reviewId(req.ctx(), Number(req.params.idId), { decision: req.body.decision, photo_match: !!req.body.photo_match, note: req.body.note });
+  customers.reviewId(req.ctx(), Number(req.params.idId), { decision: req.body.decision, photo_match: !!req.body.photo_match, not_expired: !!req.body.not_expired, dob_match: !!req.body.dob_match, note: req.body.note });
   res.flash('success', `ID ${req.body.decision === 'accept' ? 'accepted' : 'rejected'}.`);
   res.redirect(`/customers/${req.params.id}#ids`);
 });

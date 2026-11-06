@@ -77,6 +77,7 @@ The server reads its page templates once, at start-up, so it keeps running the v
 
 ## Interpretations (please confirm)
 
+* **IDs** are recorded as the ID type, the name exactly as on the ID and the front/back scans (removed at the lender's request: ID number, issued by, issue and expiry dates, date of birth). The CRO reads the expiry and date of birth from the scans and confirms them when accepting the ID; at the counter (item return, replacement ticket) staff confirm the ID shown against its scan. The pledge ticket's ID line shows the ID types, or the numbers for IDs recorded earlier. Duplicate checks by ID number apply only to IDs that have a number.
 * **Customer mobile numbers** are no longer confirmed by an SMS code (removed at the lender's request); staff sign-in still uses an SMS code.
 * **Company name**: Kinaboy Limited, slogan "When it matters" (Admin → Settings). Databases that still carry the earlier placeholder name are renamed when the app starts.
 * **Register customer** follows the lender's printed pledge ticket: nearest landmark, residence proof, SMS language (messages go in English), the live camera photo and the specimen signature were removed (the customer signs the printed ticket; one or two customer photos are uploaded instead), and the customer's own bank details are no longer collected — the form shows the **company's** bank and mobile-banking details (Admin → Settings), which also print on the Disclosure Statement and receipts. Columns for the removed fields are kept, so earlier values stay on record.

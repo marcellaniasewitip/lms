@@ -78,8 +78,8 @@ CREATE INDEX IF NOT EXISTS customers_name ON customers(name_norm, dob);
 
 CREATE TABLE IF NOT EXISTS customer_ids (
   id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), id_type_id INTEGER NOT NULL REFERENCES id_types(id),
-  number_enc TEXT NOT NULL, number_hash TEXT NOT NULL, number_last4 TEXT,
-  issued_by TEXT, issue_date TEXT, expiry_date TEXT, name_on_id TEXT NOT NULL, dob_on_id TEXT NOT NULL,
+  number_enc TEXT, number_hash TEXT, number_last4 TEXT,
+  issued_by TEXT, issue_date TEXT, expiry_date TEXT, name_on_id TEXT NOT NULL, dob_on_id TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected')),
   name_check TEXT, photo_match INTEGER, check_note TEXT, checked_by INTEGER, checked_at TEXT,
   created_by INTEGER NOT NULL, created_at TEXT NOT NULL
@@ -283,6 +283,22 @@ function open(file = DB_FILE) {
   const itemCols = db.prepare('PRAGMA table_info(items)').all().map((c) => c.name);
   if (!itemCols.includes('bin_id')) db.exec('ALTER TABLE items ADD COLUMN bin_id INTEGER REFERENCES bins(id)');
   if (!itemCols.includes('key_bin_id')) db.exec('ALTER TABLE items ADD COLUMN key_bin_id INTEGER REFERENCES bins(id)');
+  // IDs are now recorded as the type, the name on the ID and the scans; the number, dates and
+  // date of birth are read from the scans. Older databases required them: rebuild that table
+  // once without those NOT NULL rules (all rows are kept).
+  const idCols = db.prepare('PRAGMA table_info(customer_ids)').all();
+  if (idCols.some((c) => ['number_enc', 'number_hash', 'dob_on_id'].includes(c.name) && c.notnull)) {
+    const names = idCols.map((c) => c.name).join(', ');
+    db.pragma('foreign_keys = OFF'); // a table rebuild copies rows as they are
+    db.transaction(() => {
+      db.exec('ALTER TABLE customer_ids RENAME TO customer_ids_old');
+      db.exec(SCHEMA.slice(SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS customer_ids'), SCHEMA.indexOf('CREATE INDEX IF NOT EXISTS customer_ids_hash')));
+      db.exec(`INSERT INTO customer_ids (${names}) SELECT ${names} FROM customer_ids_old`);
+      db.exec('DROP TABLE customer_ids_old');
+      db.exec('CREATE INDEX IF NOT EXISTS customer_ids_hash ON customer_ids(number_hash)');
+    })();
+    db.pragma('foreign_keys = ON');
+  }
   const loanCols = db.prepare('PRAGMA table_info(loans)').all().map((c) => c.name);
   if (!loanCols.includes('ticket_printed_on')) db.exec('ALTER TABLE loans ADD COLUMN ticket_printed_on TEXT');
   if (!loanCols.includes('ticket_printed_by')) db.exec('ALTER TABLE loans ADD COLUMN ticket_printed_by INTEGER');

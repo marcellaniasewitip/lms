@@ -16,8 +16,9 @@
 </fieldset>
 <% } %>
 <fieldset><legend><%= handback ? '1' : '3' %>. ID shown — must be one of the same IDs</legend>
-  <div class="row"><div><label>ID</label><select name="id_record_id"><% ids.forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %> ending <%= x.number_last4 %></option><% }) %></select></div>
-  <div><label>Type the number from the ID shown</label><input name="id_number_shown" required autocomplete="off"></div></div>
+  <div class="row"><div><label>ID shown</label><select name="id_record_id"><% ids.forEach(function (x) { %><option value="<%= x.id %>"><%= x.type_name %><%= x.number_last4 ? ' ending ' + x.number_last4 : '' %></option><% }) %></select></div></div>
+  <div class="photos" style="margin:.4rem 0"><% ids.forEach(function (x) { (scans[x.id] || []).forEach(function (f) { %><a href="/files/<%= f.id %>" target="_blank" title="<%= x.type_name %> <%= f.kind %>"><% if (f.mime && f.mime.startsWith('image/')) { %><img src="/files/<%= f.id %>" alt="<%= x.type_name %> <%= f.kind %>" style="width:160px;height:100px;object-fit:contain;background:#fff"><% } else { %><span class="badge"><%= x.type_name %> <%= f.kind %> (PDF)</span><% } %></a><% }) }) %></div>
+  <label class="check"><input type="checkbox" name="id_confirmed" value="1" required> I compared the ID shown with its scan on file (photo, name and number) and it is the same ID.</label>
 </fieldset>
 <fieldset><legend><%= handback ? '2' : '4' %>. Check the item against the intake photos</legend>
   <% lis.forEach(function (i) { %>

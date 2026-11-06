@@ -212,31 +212,28 @@ function addId(ctx, customerId, data, scans = {}) {
   const t = db.get().prepare('SELECT * FROM id_types WHERE id = ? AND active = 1').get(data.id_type_id);
   const errs = [];
   if (!t) errs.push('Choose an accepted ID type.');
-  const number = normalizeNumber(data.number);
-  if (!number) errs.push('ID number is required.');
+  // Only the type, the name exactly as on the ID and the scans are entered; the number, dates and
+  // date of birth are on the scans, which the CRO checks. (A number may still be passed in.)
+  const number = normalizeNumber(data.number) || null;
   const issue = dates.parse(data.issue_date), expiry = dates.parse(data.expiry_date), dobOnId = dates.parse(data.dob_on_id);
-  if (data.issue_date && !issue) errs.push('Issue date must be DD/MM/YYYY.');
-  if (data.expiry_date && !expiry) errs.push('Expiry date must be DD/MM/YYYY.');
-  if (!data.name_on_id) errs.push('Name as printed on the ID is required.');
-  if (!dobOnId) errs.push('Date of birth on the ID is required (DD/MM/YYYY).');
+  if (!data.name_on_id) errs.push('Name exactly as on the ID is required.');
   if (!scans.front || !scans.front.length) errs.push('Front scan of the ID is required.');
-  if (t && t.photo !== 'no' && t.name !== 'Birth certificate' && !expiry && t.use === 'primary') errs.push('Expiry date is required for primary IDs.');
   if (errs.length) throw new RuleError('Please fix the ID details.', errs);
   const existing = ids(customerId);
   if (existing.some((x) => x.id_type_id === t.id && x.status !== 'rejected')) throw new RuleError('This customer already has this ID type. The two IDs must be of different types.');
-  const hash = hmac(number);
-  const others = db.get().prepare(`SELECT ci.customer_id, c.customer_no FROM customer_ids ci JOIN customers c ON c.id = ci.customer_id
-    WHERE ci.number_hash = ? AND ci.customer_id != ?`).all(hash, customerId);
+  const hash = number ? hmac(number) : null;
+  const others = hash ? db.get().prepare(`SELECT ci.customer_id, c.customer_no FROM customer_ids ci JOIN customers c ON c.id = ci.customer_id
+    WHERE ci.number_hash = ? AND ci.customer_id != ?`).all(hash, customerId) : [];
   const d = db.get();
   const idId = d.transaction(() => {
     const info = d.prepare(`INSERT INTO customer_ids(customer_id, id_type_id, number_enc, number_hash, number_last4, issued_by, issue_date,
       expiry_date, name_on_id, dob_on_id, name_check, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-      customerId, t.id, encrypt(number), hash, number.slice(-4), data.issued_by || t.issued_by, issue, expiry,
+      customerId, t.id, number ? encrypt(number) : null, hash, number ? number.slice(-4) : null, data.issued_by || t.issued_by, issue, expiry,
       data.name_on_id.trim(), dobOnId, nameCheck(c, data.name_on_id, dobOnId), ctx.user.id, dates.nowIso());
     const rid = info.lastInsertRowid;
     files.storeUploads(scans.front, { ownerType: 'customer_id', ownerId: rid, kind: 'front', userId: ctx.user.id });
     if (scans.back) files.storeUploads(scans.back, { ownerType: 'customer_id', ownerId: rid, kind: 'back', userId: ctx.user.id });
-    audit.log(ctx, 'add_id', 'customer_id', rid, null, { customer_id: customerId, type: t.name, number: mask(number), expiry });
+    audit.log(ctx, 'add_id', 'customer_id', rid, null, { customer_id: customerId, type: t.name, number: number ? mask(number) : null, name_on_id: data.name_on_id });
     if (others.length) sendToDuplicateReview(ctx, customerId, others.map((o) => ({ id: o.customer_id, customer_no: o.customer_no, why: 'same ID number' })));
     db.get().prepare("UPDATE customers SET verification_status = CASE WHEN verification_status IN ('duplicate_review') THEN verification_status ELSE 'pending' END WHERE id = ?").run(customerId);
     notify.inApp({ role: 'cro', branchId: c.branch_id, title: `ID to verify for ${c.customer_no}`, body: `${t.name} added for ${fullName(c)}`, link: `/customers/${customerId}` });
@@ -250,7 +247,10 @@ function nameCheck(c, nameOnId, dobOnId) {
   return names.compare(fullName(c), nameOnId);
 }
 
-function reviewId(ctx, idRecordId, { decision, photo_match, note }) {
+// The CRO checks the ID against its scans: the photo against the customer's photos, that it has
+// not expired, and that the date of birth matches the profile (both read from the scan when they
+// were not typed in).
+function reviewId(ctx, idRecordId, { decision, photo_match, not_expired, dob_match, note }) {
   requireRole(ctx, 'cro');
   const r = db.get().prepare(`SELECT ci.*, t.use AS type_use, t.photo AS type_photo, t.name AS type_name FROM customer_ids ci
     JOIN id_types t ON t.id = ci.id_type_id WHERE ci.id = ?`).get(idRecordId);
@@ -262,8 +262,10 @@ function reviewId(ctx, idRecordId, { decision, photo_match, note }) {
   if (decision === 'accept') {
     const errs = [];
     if (r.expiry_date && r.expiry_date < on) errs.push(`This ID expired on ${dates.fmt(r.expiry_date)} and must be rejected.`);
-    if (r.dob_on_id !== c.dob) errs.push('Date of birth on the ID does not match the profile.');
-    if (dates.ageOn(r.dob_on_id, on) < 18) errs.push('The ID shows the pledger is under 18.');
+    if (!r.expiry_date && !not_expired) errs.push('Check the expiry date on the scan and confirm the ID has not expired.');
+    if (r.dob_on_id && r.dob_on_id !== c.dob) errs.push('Date of birth on the ID does not match the profile.');
+    if (!r.dob_on_id && !dob_match) errs.push(`Check the date of birth on the scan and confirm it matches the profile (${dates.fmt(c.dob)}).`);
+    if (dates.ageOn(r.dob_on_id || c.dob, on) < 18) errs.push('The pledger is under 18.');
     if (nc === 'mismatch') errs.push('The name on the ID does not match the profile.');
     if (nc === 'flagged' && !note) errs.push('The name differs slightly from the profile: add a note explaining why you accept it.');
     if (r.type_photo === 'yes' && !photo_match) errs.push("Confirm the photo on the ID matches the customer's photos.");
@@ -272,7 +274,8 @@ function reviewId(ctx, idRecordId, { decision, photo_match, note }) {
   } else if (!note) throw new RuleError('Give a reason for rejecting the ID.');
   db.get().prepare('UPDATE customer_ids SET status = ?, photo_match = ?, name_check = ?, check_note = ?, checked_by = ?, checked_at = ? WHERE id = ?')
     .run(decision === 'accept' ? 'accepted' : 'rejected', photo_match ? 1 : 0, nc, note || null, ctx.user.id, dates.nowIso(), idRecordId);
-  audit.log(ctx, decision === 'accept' ? 'id_accepted' : 'id_rejected', 'customer_id', idRecordId, { status: r.status }, { status: decision, note, photo_match: !!photo_match });
+  audit.log(ctx, decision === 'accept' ? 'id_accepted' : 'id_rejected', 'customer_id', idRecordId, { status: r.status },
+    { status: decision, note, photo_match: !!photo_match, not_expired: r.expiry_date ? undefined : !!not_expired, dob_match: r.dob_on_id ? undefined : !!dob_match });
   recomputeVerification(c.id, on);
 }
 
@@ -357,9 +360,12 @@ function search(ctx, q) {
 
 // ID number as the viewer may see it: masked for Loan Officers.
 function idNumberFor(ctx, idRecord) {
+  if (!idRecord.number_enc) return '';
   const full = decrypt(idRecord.number_enc);
   return ctx.user.role === 'loan_officer' ? mask(full) : full;
 }
+// How an ID is named on documents: its number when one was recorded, otherwise its type.
+function idLabel(idRecord) { return idRecord.number_last4 ? `${idRecord.type_name} ${mask(idRecord.number_last4)}` : idRecord.type_name; }
 function bankFor(ctx, c) {
   const acct = decrypt(c.bank_account_enc), mb = decrypt(c.mobile_banking_enc);
   return ctx.user.role === 'loan_officer' ? { account: mask(acct), mobile: mask(mb) } : { account: acct, mobile: mb };
@@ -367,6 +373,6 @@ function bankFor(ctx, c) {
 
 module.exports = {
   PROVINCES, RESIDENCE_PROOF, REQUIRED, get, fullName, create, update, idTypes, ids, addId, reviewId,
-  twoIdRule, profileComplete, loanReadiness, recomputeVerification, resolveDuplicate, setStatus, search, idNumberFor, bankFor,
+  twoIdRule, profileComplete, loanReadiness, recomputeVerification, resolveDuplicate, setStatus, search, idNumberFor, idLabel, bankFor,
   normMobile, displayMobile, NETWORKS: phone.NAMES,
 };

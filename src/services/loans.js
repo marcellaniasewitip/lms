@@ -511,13 +511,16 @@ function decideWaiver(ctx, waiverId, { approve, note }) {
 }
 
 // ---------- identity at the counter ----------
-function checkIdShown(customerId, idRecordId, numberShown, { photoOnly = false, onDate } = {}) {
+// The ID shown at the counter must be one of the customer's checked IDs. Staff compare it with
+// the scan on file and confirm it matches (or type its number when one was recorded).
+function checkIdShown(customerId, idRecordId, numberShown, { photoOnly = false, onDate, confirmed = false } = {}) {
   const list = customers.ids(customerId);
   const rec = list.find((x) => x.id === Number(idRecordId));
   rule(rec && rec.status === 'accepted', 'Choose one of the IDs the customer registered.');
   if (photoOnly) rule(rec.is_photo_id && rec.type_photo === 'yes', 'A replacement ticket needs a passport, driver\'s licence or other photo ID.');
   if (onDate && rec.expiry_date) rule(rec.expiry_date >= onDate, `The ${rec.type_name} shown expired on ${dates.fmt(rec.expiry_date)}.`);
-  rule(hmac(numberShown) === rec.number_hash, 'The ID number shown does not match the ID on file.');
+  if (numberShown && rec.number_hash) rule(hmac(numberShown) === rec.number_hash, 'The ID number shown does not match the ID on file.');
+  else rule(confirmed, 'Compare the ID shown with the scan on file and confirm it is the same ID.');
   return rec;
 }
 
@@ -548,7 +551,7 @@ function returnItems(ctx, loanId, data, uploads = {}) {
     else if (m > li.mileage_intake + tol && !data.mileage_note) errs.push(`${li.plate}: odometer shows ${m} km against ${li.mileage_intake} km at intake — explain the difference.`);
   }
   if (errs.length) throw new RuleError('The item cannot be returned yet.', errs);
-  const rec = checkIdShown(l.customer_id, data.id_record_id, data.id_number_shown);
+  const rec = checkIdShown(l.customer_id, data.id_record_id, data.id_number_shown, { confirmed: !!data.id_confirmed });
   const c = customers.get(l.customer_id);
   const collector = data.collector === 'authorised' ? `${data.authorised_name} (authorised in writing by ${customers.fullName(c)})` : customers.fullName(c);
   const d = db.get();
@@ -556,7 +559,7 @@ function returnItems(ctx, loanId, data, uploads = {}) {
     for (const li of lis) {
       const it = items.get(li.item_id);
       d.prepare(`UPDATE items SET returned_at = ?, returned_to = ?, return_id_shown = ?, return_mileage = ?, return_note = ?, current_loan_id = NULL WHERE id = ?`)
-        .run(dates.nowIso(), collector, `${rec.type_name} ${mask(rec.number_last4)}`, li.category === 'car' ? Number(data[`mileage_${li.item_id}`]) : null, data.mileage_note || null, it.id);
+        .run(dates.nowIso(), collector, customers.idLabel(rec), li.category === 'car' ? Number(data[`mileage_${li.item_id}`]) : null, data.mileage_note || null, it.id);
       items.recordMovement(ctx, it, { to_location: 'Collected by customer', to_status: 'returned', reason: `Loan ${l.loan_no} paid in full; collected by ${collector}` });
       items.deletePassword(ctx, it, 'Item returned to customer');
     }
@@ -576,14 +579,14 @@ function handBack(ctx, loanId, data) {
   rule(['rejected', 'cancelled'].includes(l.status), 'Items are handed back on rejected or cancelled applications.');
   rule(!l.date_closed, 'The items were already handed back.');
   rule(data.signatureDataUrl, 'The customer must sign for the items.');
-  const rec = checkIdShown(l.customer_id, data.id_record_id, data.id_number_shown);
+  const rec = checkIdShown(l.customer_id, data.id_record_id, data.id_number_shown, { confirmed: !!data.id_confirmed });
   const c = customers.get(l.customer_id);
   const on = today(ctx);
   db.get().transaction(() => {
     for (const li of loanItems(l.id)) {
       const it = items.get(li.item_id);
       if (!['in_store'].includes(it.custody_status)) continue;
-      db.get().prepare('UPDATE items SET returned_at = ?, returned_to = ?, return_id_shown = ? WHERE id = ?').run(dates.nowIso(), customers.fullName(c), `${rec.type_name} ${mask(rec.number_last4)}`, it.id);
+      db.get().prepare('UPDATE items SET returned_at = ?, returned_to = ?, return_id_shown = ? WHERE id = ?').run(dates.nowIso(), customers.fullName(c), customers.idLabel(rec), it.id);
       items.recordMovement(ctx, it, { to_location: 'Handed back to customer', to_status: 'handed_back', reason: `Application ${l.loan_no} ${l.status}` });
       items.deletePassword(ctx, it, 'Item handed back');
     }
@@ -600,19 +603,19 @@ function tickets(loanId) { return db.get().prepare('SELECT * FROM tickets WHERE 
 function currentTicket(loanId) {
   return db.get().prepare("SELECT * FROM tickets WHERE loan_id = ? AND status != 'cancelled' ORDER BY version DESC LIMIT 1").get(loanId);
 }
-function replaceTicket(ctx, loanId, { id_record_id, id_number_shown, reason }) {
+function replaceTicket(ctx, loanId, { id_record_id, id_number_shown, id_confirmed, reason }) {
   requireRole(ctx, 'loan_officer');
   const l = get(loanId);
   writable(l); checkBranch(ctx, l.branch_id);
   rule([...PAYABLE, 'paid'].includes(l.status), 'A replacement ticket is issued only while the goods are held under the loan.');
   rule(reason, 'Give the reason (for example: ticket lost).');
-  const rec = checkIdShown(l.customer_id, id_record_id, id_number_shown, { photoOnly: true, onDate: today(ctx) });
+  const rec = checkIdShown(l.customer_id, id_record_id, id_number_shown, { photoOnly: true, onDate: today(ctx), confirmed: !!id_confirmed });
   const cur = currentTicket(l.id);
   db.get().transaction(() => {
     if (cur) db.get().prepare("UPDATE tickets SET status = 'cancelled', cancelled_at = ? WHERE id = ?").run(dates.nowIso(), cur.id);
     db.get().prepare(`INSERT INTO tickets(loan_id, ticket_no, version, kind, status, id_shown, reason, printed_by, printed_at)
       VALUES (?,?,?,'replacement',?,?,?,?,?)`).run(l.id, l.loan_no, (cur ? cur.version : 1) + 1, cur && cur.status === 'expired' ? 'expired' : 'active',
-      `${rec.type_name} ${mask(rec.number_last4)}`, reason, ctx.user.id, dates.nowIso());
+      customers.idLabel(rec), reason, ctx.user.id, dates.nowIso());
     event(ctx, l.id, 'ticket_replaced', { note: `Replacement ticket issued (${reason}); old ticket cancelled` });
     audit.log(ctx, 'ticket_replaced', 'loan', l.id, { version: cur && cur.version }, { version: (cur ? cur.version : 1) + 1, reason });
   })();

@@ -58,29 +58,30 @@
 
 <div class="panel" id="ids">
   <h2>Identity documents</h2>
-  <p class="small muted">Two IDs of different types; at least one primary ID with a photo matching the customer's photos. Name and date of birth must match the profile; IDs must not be expired; the pledger must be 18 or over.</p>
+  <p class="small muted">Two IDs of different types; at least one primary ID with a photo matching the customer's photos. The CRO checks each scan: the name and date of birth must match the profile, the ID must not be expired, and the pledger must be 18 or over.</p>
   <div class="tablewrap"><table>
-  <thead><tr><th>Type</th><th>Number</th><th>Name / DOB on ID</th><th>Issued / expires</th><th>Scans</th><th>Name check</th><th>Status</th><th>Checked</th></tr></thead>
+  <thead><tr><th>Type</th><th>Name on ID</th><th>Scans</th><th>Name check</th><th>Status</th><th>Checked</th></tr></thead>
   <tbody>
-  <% if (!ids.length) { %><tr><td colspan="8" class="empty">No IDs yet.</td></tr><% } %>
+  <% if (!ids.length) { %><tr><td colspan="6" class="empty">No IDs yet.</td></tr><% } %>
   <% ids.forEach(function (x) { const expired = x.expiry_date && x.expiry_date < today; %>
   <tr>
     <td><%= x.type_name %><div class="small muted"><%= x.type_use.replace('_', ' ') %> · photo <%= x.type_photo %></div></td>
-    <td class="mono"><%= x.shown %></td>
-    <td><%= x.name_on_id %><div class="small"><%= fd(x.dob_on_id) %></div></td>
-    <td><%= fd(x.issue_date) || '—' %><div class="small <%= expired ? '' : 'muted' %>" style="<%= expired ? 'color:var(--bad);font-weight:600' : '' %>"><%= x.expiry_date ? (expired ? 'EXPIRED ' : '') + fd(x.expiry_date) : 'no expiry' %></div></td>
-    <td><% x.scans.forEach(function (f) { %><a href="/files/<%= f.id %>"><%= f.kind %></a> <% }) %></td>
+    <td><%= x.name_on_id %><% if (x.shown || x.dob_on_id || x.expiry_date) { %><div class="small muted"><%= [x.shown, x.dob_on_id ? 'born ' + fd(x.dob_on_id) : '', x.expiry_date ? (expired ? 'EXPIRED ' : 'expires ') + fd(x.expiry_date) : ''].filter(Boolean).join(' · ') %></div><% } %></td>
+    <td><% x.scans.forEach(function (f) { %><a href="/files/<%= f.id %>" target="_blank"><%= f.kind === 'front' ? 'Front' : 'Back' %></a> <% }) %></td>
     <td><%- include('../partials/badge', { s: x.name_check || 'pending' }) %></td>
     <td><%- include('../partials/badge', { s: x.status }) %><% if (x.photo_match) { %><div class="small">photo matched</div><% } %></td>
     <td class="small"><%= x.checked_by_name || '' %><br><%= fts(x.checked_at) %><% if (x.check_note) { %><br><em><%= x.check_note %></em><% } %></td>
   </tr>
   <% if (is('cro') && x.status === 'pending') { %>
-  <tr><td colspan="8" style="background:#fbfaf5">
+  <tr><td colspan="6" style="background:#fbfaf5">
     <form method="post" action="/customers/<%= c.id %>/ids/<%= x.id %>/review" class="f"><%- include('../partials/csrf') %>
       <strong>CRO check:</strong> open the scans, compare with the customer's photos above and the profile.
       <% if (x.name_check === 'flagged') { %><div class="alert alert-warn small">Small spelling difference between "<%= x.name_on_id %>" and the profile name — accept only with a note.</div><% } %>
-      <% if (x.name_check === 'mismatch') { %><div class="alert alert-error small">Name or date of birth does not match the profile — this ID must be rejected.</div><% } %>
+      <% if (x.name_check === 'mismatch') { %><div class="alert alert-error small">The name does not match the profile — this ID must be rejected.</div><% } %>
+      <div class="photos" style="margin:.4rem 0"><% x.scans.forEach(function (f) { %><a href="/files/<%= f.id %>" target="_blank"><% if (f.mime && f.mime.startsWith('image/')) { %><img src="/files/<%= f.id %>" alt="<%= f.kind %> scan" style="width:180px;height:115px;object-fit:contain;background:#fff"><% } else { %><span class="badge"><%= f.kind %> scan (PDF)</span><% } %></a><% }) %></div>
       <% if (x.type_photo === 'yes') { %><label class="check"><input type="checkbox" name="photo_match" value="1"> The photo on this ID matches the customer's photos.</label><% } %>
+      <% if (!x.expiry_date) { %><label class="check"><input type="checkbox" name="not_expired" value="1"> I checked the expiry date on the scan: the ID has not expired<%= x.type_photo === 'no' ? ' (or has no expiry date)' : '' %>.</label><% } %>
+      <% if (!x.dob_on_id) { %><label class="check"><input type="checkbox" name="dob_match" value="1"> The date of birth on the scan matches the profile: <strong><%= fd(c.dob) %></strong> (18 or over).</label><% } %>
       <label>Note</label><input name="note">
       <div class="actions"><button class="btn small" name="decision" value="accept">Accept ID</button><button class="btn small danger" name="decision" value="reject">Reject ID</button></div>
     </form></td></tr>
@@ -92,15 +93,11 @@
     <form method="post" action="/customers/<%= c.id %>/ids?_csrf=<%= csrf %>" enctype="multipart/form-data" class="f">
       <div class="row">
         <div><label>ID type</label><select name="id_type_id" required><% idTypes.forEach(function (t) { %><option value="<%= t.id %>" <%= String(val('id_type_id')) === String(t.id) ? 'selected' : '' %>><%= t.name %> (<%= t.use.replace('_', ' ') %>)</option><% }) %></select></div>
-        <div><label>ID number</label><input name="number" required autocomplete="off"></div>
-        <div><label>Issued by</label><input name="issued_by" value="<%= val('issued_by') %>" placeholder="Defaults to the usual issuer"></div>
-        <div><label>Issue date</label><input name="issue_date" value="<%= val('issue_date') %>" placeholder="DD/MM/YYYY"></div>
-        <div><label>Expiry date</label><input name="expiry_date" value="<%= val('expiry_date') %>" placeholder="DD/MM/YYYY"></div>
         <div><label>Name exactly as on the ID</label><input name="name_on_id" value="<%= val('name_on_id', c.given_names + ' ' + c.surname) %>" required></div>
-        <div><label>Date of birth on the ID</label><input name="dob_on_id" value="<%= val('dob_on_id', fd(c.dob)) %>" placeholder="DD/MM/YYYY" required></div>
-        <div><label>Front scan</label><input type="file" name="front" accept="image/*,application/pdf" required></div>
+        <div><label>Front scan <span class="req">*</span></label><input type="file" name="front" accept="image/*,application/pdf" required></div>
         <div><label>Back scan</label><input type="file" name="back" accept="image/*,application/pdf"></div>
       </div>
+      <p class="hint">The ID number, dates and date of birth are read from the scans by the CRO, so they are not typed in. Scan both sides clearly.</p>
       <div class="actions"><button class="btn">Add ID</button></div>
     </form></div></details><% } %>
 </div>
