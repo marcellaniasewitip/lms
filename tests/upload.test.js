@@ -51,8 +51,8 @@ async function register({ photo, residence }) {
     surname: `Kapi${'ABCDEFGH'[n]}`, given_names: 'Rose', dob: `0${n}/03/1991`, sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean',
     home_province: 'Eastern Highlands', home_district: 'Goroka', home_village: 'Asaro', mobile: `(+675) 7345-678${n}`,
     addr_province: 'National Capital District', addr_district: 'Moresby North-East', addr_town: 'Gerehu', addr_section_lot: 'Section 3, Lot 4',
-    addr_landmark: 'Near the market', residence_proof_type: 'Utility bill', nok_name: 'Paul Kapi', nok_relationship: 'Brother',
-    nok_phone: '(+675) 7456-7890', nok_address: 'Asaro', sms_language: 'en', consent_terms: '1', consent_data: '1', consent_forfeit: '1',
+    addr_landmark: 'Near the market', residence_proof_type: 'Utility bill', // no next of kin: no longer asked for
+    sms_language: 'en', consent_terms: '1', consent_data: '1', consent_forfeit: '1',
   };
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
   if (photo) fd.append('photo', new Blob([photo.buf], { type: photo.type }), photo.name);

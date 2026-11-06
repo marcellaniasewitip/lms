@@ -75,6 +75,8 @@ The server reads its page templates once, at start-up, so it keeps running the v
 
 ## Interpretations (please confirm)
 
+* **Next of kin** was removed from the customer form at the lender's request (the system description lists it as required). The database columns are kept, so details already saved stay on record.
+
 * **Several items with different grades:** the loan limit is the sum of each item's allowed amount, and the weekly rate must fall in the band of the *lowest-graded* item.
 * **Interest after forfeiture:** interest stops on the forfeiture date. The surplus or shortfall is measured against the amount owed at forfeiture.
 * **Forfeiture timing:** the CRO can declare forfeiture from the grace end date onward, if the balance is still not zero.

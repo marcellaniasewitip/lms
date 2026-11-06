@@ -18,7 +18,6 @@ function makeCustomer(svc, lo, cro, today, p) {
     addr_section_lot: p.lot || 'Section 9, Lot 21', addr_landmark: p.landmark || 'Near Gerehu Stage 2 market', po_box: '',
     residence_proof_type: 'Utility bill', employer: p.employer || '', occupation: p.occupation || 'Teacher', usual_income: p.income || '',
     bank_name: 'BSP', bank_account: p.bank || '1000123456', mobile_banking: '', sms_language: p.lang || 'en',
-    nok_name: p.nok || 'Mary Kila', nok_relationship: 'Sister', nok_phone: '(+675) 7123-9999', nok_address: 'Asaro village',
     consent_terms: 'on', consent_data: 'on', consent_forfeit: 'on',
   }, { photoDataUrl: DATA_URL, signatureDataUrl: DATA_URL, residence: [file('bill.png')] });
   const code = customers.sendMobileCode(ctxFor(lo, today), id);

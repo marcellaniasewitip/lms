@@ -62,11 +62,11 @@ test('expired ID is rejected and under-18 blocked', () => {
   const rid = customers.addId(C(lo, t), id, { id_type_id: nid.id, number: 'OLD999', expiry_date: '01/01/2025', name_on_id: 'Ana Young', dob_on_id: '01/01/2000' }, { front: [fx.file()] });
   assert.throws(() => customers.reviewId(C(cro, t), rid, { decision: 'accept', photo_match: true }), rx(/expired on 01\/01\/2025/));
   assert.throws(() => customers.create(C(lo, t), { surname: 'Kid', given_names: 'A', dob: '01/01/2012' }), /fix the customer profile/);
-  // Entered as (+675) 8199-8888: stored as the local digits, network from the prefix, other numbers kept in the same format.
-  assert.deepEqual([customers.get(id).mobile, customers.get(id).mobile_network, customers.get(id).nok_phone], ['81998888', 'Vodafone', '(+675) 7111-1111']);
+  // Entered as (+675) 8199-8888: stored as the local digits with the network from the prefix; next of kin is no longer recorded.
+  assert.deepEqual([customers.get(id).mobile, customers.get(id).mobile_network, customers.get(id).nok_name], ['81998888', 'Vodafone', null]);
   // Contact numbers are accepted only as (+675) 71234567 or (+675) 7123-4567.
   for (const [mobile, net] of [['(+675) 71234567', 'Digicel'], ['(+675) 7812-3456', 'Telikom'], ['(+675) 8212-3456', 'Vodafone']]) {
-    customers.update(C(lo, t), id, { mobile, second_phone: '(+675) 7123-4567', nok_phone: '(+675) 75551234' });
+    customers.update(C(lo, t), id, { mobile, second_phone: '(+675) 7123-4567' });
     assert.equal(customers.get(id).mobile_network, net, mobile);
   }
   for (const bad of ['71234567', '+675 7123 4567', '+67571234567', '(+675)71234567', '(+675) 7123 4567', '675 7123-4567']) {
@@ -74,7 +74,8 @@ test('expired ID is rejected and under-18 blocked', () => {
   }
   assert.throws(() => customers.update(C(lo, t), id, { mobile: '(+675) 7712-3456' }), rx(/not a PNG mobile/));
   assert.throws(() => customers.update(C(lo, t), id, { second_phone: '7123 4567' }), rx(/Second number must be written/));
-  assert.throws(() => customers.update(C(lo, t), id, { nok_phone: '+675 7123 4567' }), rx(/Next of kin phone must be written/));
+  // Next of kin is no longer part of the form or required.
+  customers.update(C(lo, t), id, { nok_name: '', nok_phone: '' });
   // A saved profile can be edited without retyping the numbers (they are stored and re-shown in the accepted format).
   customers.update(C(lo, t), id, { occupation: 'Farmer' });
   // Staff sign-in numbers follow the same format.

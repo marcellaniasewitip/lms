@@ -1,5 +1,5 @@
 <%- include('../partials/header') %>
-<% const isNew = !c.id; const v = function (k) { return val(k, c[k] == null ? '' : (k === 'dob' ? fd(c[k]) : ['mobile', 'second_phone', 'nok_phone'].includes(k) ? fmtPhone(c[k]) : k === 'usual_income' && c[k] ? (c[k] / 100).toFixed(2) : c[k])); };
+<% const isNew = !c.id; const v = function (k) { return val(k, c[k] == null ? '' : (k === 'dob' ? fd(c[k]) : ['mobile', 'second_phone'].includes(k) ? fmtPhone(c[k]) : k === 'usual_income' && c[k] ? (c[k] / 100).toFixed(2) : c[k])); };
    const tel = 'type="tel" pattern="' + phonePattern + '" title="Write the number as ' + phoneFormat + '" placeholder="(+675) 7123-4567"';
    const sel = function (k, opt) { return String(v(k)) === String(opt) ? 'selected' : ''; }; %>
 <div class="pagehead"><div><h1><%= isNew ? 'Register customer' : 'Edit ' + c.customer_no %></h1>
@@ -59,14 +59,7 @@
     <div><label>Mobile banking number</label><input name="mobile_banking" autocomplete="off" placeholder="<%= isNew ? '' : 'Leave blank to keep' %>"></div>
   </div>
 </fieldset>
-<fieldset><legend>Next of kin</legend>
-  <div class="row">
-    <div><label>Name <span class="req">*</span></label><input name="nok_name" value="<%= v('nok_name') %>" required></div>
-    <div><label>Relationship <span class="req">*</span></label><input name="nok_relationship" value="<%= v('nok_relationship') %>" required></div>
-    <div><label>Phone <span class="req">*</span></label><input name="nok_phone" value="<%= v('nok_phone') %>" <%- tel %> required></div>
-    <div><label>Village or address <span class="req">*</span></label><input name="nok_address" value="<%= v('nok_address') %>" required></div>
-  </div>
-</fieldset>
+<%# Next of kin section removed at the lender's request (see the note in src/services/customers.js). %>
 <fieldset><legend>Photo and signature</legend>
   <div class="capture">
     <div data-camera="photo_data">

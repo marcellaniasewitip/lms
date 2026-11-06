@@ -148,8 +148,7 @@ at(0, () => {
   const { id } = customers.create(C(lo, T), {
     surname: 'Kumul', given_names: 'Esther', dob: '12/02/1993', sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean', home_province: 'Manus',
     home_district: 'Lorengau', home_village: 'Pere', mobile: '(+675) 8223-4511', addr_province: 'National Capital District', addr_district: 'Moresby South',
-    addr_town: 'Boroko', addr_section_lot: 'Section 41, Lot 7', addr_landmark: 'Opposite Boroko Foodworld', residence_proof_type: 'Rental letter', nok_name: 'Paul Kumul',
-    nok_relationship: 'Brother', nok_phone: '(+675) 72221111', nok_address: 'Pere village', sms_language: 'en', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
+    addr_town: 'Boroko', addr_section_lot: 'Section 41, Lot 7', addr_landmark: 'Opposite Boroko Foodworld', residence_proof_type: 'Rental letter', sms_language: 'en', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
   }, { photoDataUrl: fx.DATA_URL, signatureDataUrl: fx.DATA_URL, residence: [fx.file('rental-letter.png')] });
   const code = customers.sendMobileCode(C(lo, T), id); customers.confirmMobileCode(C(lo, T), id, code);
   const types = customers.idTypes();

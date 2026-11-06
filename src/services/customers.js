@@ -22,8 +22,10 @@ const REQUIRED = {
   citizenship: 'Citizenship', home_province: 'Home province', home_district: 'Home district', home_village: 'Home village',
   mobile: 'Mobile number', addr_province: 'Current address – province',
   addr_district: 'Current address – district', addr_town: 'Town or suburb', addr_section_lot: 'Section and lot (or settlement/village)',
-  addr_landmark: 'Nearest landmark', residence_proof_type: 'Residence proof type', nok_name: 'Next of kin name',
-  nok_relationship: 'Next of kin relationship', nok_phone: 'Next of kin phone', nok_address: 'Next of kin village or address',
+  addr_landmark: 'Nearest landmark', residence_proof_type: 'Residence proof type',
+  // Next of kin was removed from the customer form at the lender's request. The database columns
+  // (nok_name, nok_relationship, nok_phone, nok_address) are kept, so details already saved stay
+  // on record; add the four fields back here and in views/customers/form.ejs to bring it back.
 };
 // mobile_network is never typed in: it is worked out from the number's prefix.
 const EDITABLE = [...Object.keys(REQUIRED), 'mobile_network', 'second_phone', 'email', 'po_box', 'employer', 'occupation', 'usual_income',
@@ -64,7 +66,7 @@ function validate(c, onDate) {
 }
 
 // Contact numbers typed into the form must be written as (+675) 71234567 or (+675) 7123-4567.
-const PHONE_FIELDS = { mobile: 'Mobile number', second_phone: 'Second number', nok_phone: 'Next of kin phone' };
+const PHONE_FIELDS = { mobile: 'Mobile number', second_phone: 'Second number' };
 function enteredPhoneProblems(input) {
   const errs = [];
   for (const [k, label] of Object.entries(PHONE_FIELDS)) {
@@ -80,7 +82,6 @@ function enteredPhoneProblems(input) {
 function tidyPhones(c) {
   if (c.mobile) c.mobile = phone.parseInput(c.mobile) || normMobile(c.mobile);
   if (c.second_phone) c.second_phone = phone.format(c.second_phone);
-  if (c.nok_phone) c.nok_phone = phone.format(c.nok_phone);
 }
 
 function findDuplicates({ mobileNorm, nameNorm, dob, excludeId = 0 }) {
