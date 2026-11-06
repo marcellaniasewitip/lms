@@ -15,7 +15,7 @@ function makeCustomer(svc, lo, cro, today, p) {
     home_province: p.home || 'Eastern Highlands', home_district: p.district || 'Goroka', home_village: p.village || 'Asaro',
     mobile: require('../src/lib/phone').format(p.mobile), email: p.email || '', second_phone: '',
     addr_province: 'National Capital District', addr_district: p.addrDistrict || 'Moresby North-East', addr_town: p.town || 'Gerehu',
-    addr_section_lot: p.lot || 'Section 9, Lot 21', addr_landmark: p.landmark || 'Near Gerehu Stage 2 market', po_box: '',
+    addr_section_lot: p.lot || 'Section 9, Lot 21', addr_landmark: p.landmark || 'Near Gerehu Stage 2 market', po_box: p.po_box || 'P.O.Box 685, Waigani, NCD',
     residence_proof_type: 'Utility bill', employer: p.employer || '', occupation: p.occupation || 'Teacher', usual_income: p.income || '',
     bank_name: 'BSP', bank_account: p.bank || '1000123456', mobile_banking: '', sms_language: p.lang || 'en',
     consent_terms: 'on', consent_data: 'on', consent_forfeit: 'on',

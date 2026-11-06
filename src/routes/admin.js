@@ -67,6 +67,12 @@ r.post('/settings', admin, (req, res) => {
     const opts = [].concat(b.rate_options).map(Number).filter((n) => n >= 10 && n <= 20).sort((x, y) => x - y);
     if (!opts.length) errs.push('Choose at least one weekly rate between 10% and 20%.'); else next.rate_options = opts;
   }
+  for (const k of ['pledge_terms', 'pledge_confirmations', 'pledge_rights', 'pledge_obligations']) {
+    if (b[k] !== undefined) {
+      const lines = String(b[k]).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+      if (!lines.length) errs.push(`${k.replace('pledge_', 'Pledge ticket ')}: write at least one line.`); else next[k] = lines;
+    }
+  }
   if (b.ticket_terms !== undefined) next.ticket_terms = [].concat(b.ticket_terms).map((x) => String(x).trim()).filter(Boolean);
   if (errs.length) throw new RuleError('Settings not saved.', errs);
   for (const [k, v] of Object.entries(next)) settings.set(k, v);

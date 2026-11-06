@@ -146,12 +146,12 @@ r.get('/:id/ticket', (req, res) => {
   const ids = customers.ids(c.id).filter((x) => x.status === 'accepted');
   const primary = ids.find((x) => x.type_use === 'primary') || ids[0];
   const ordered = primary ? [primary, ...ids.filter((x) => x !== primary)].slice(0, 2) : [];
-  const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'Recorded (encrypted)') : '—' }));
+  const lis = loans.loanItems(l.id).map((li) => ({ ...li, password: li.device_password_enc ? (req.user.role === 'cro' ? require('../lib/crypto').decrypt(li.device_password_enc) : 'held on file (shown to the CRO only)') : '—' }));
   require('../lib/audit').log(req.ctx(), 'print_ticket', 'loan', l.id, null, { version: t && t.version });
   res.render('print/ticket', {
     title: `Pledge ticket ${l.loan_no}`, l, c, t, branch, officer: officer && officer.full_name, lis, fig: loans.ticketFigures(l),
     idText: ordered.map((x) => `${x.type_name} ${customers.idNumberFor({ user: { role: 'cro' } }, x)}`).join(' / '), preview: !l.release_date,
-    bank: require('../services/settings').companyBank(),
+    bank: require('../services/settings').companyBank(), current: settings.all(),
   });
 });
 r.get('/:id/barcode.png', (req, res) => {

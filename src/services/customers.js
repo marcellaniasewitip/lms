@@ -22,6 +22,7 @@ const REQUIRED = {
   citizenship: 'Citizenship', home_province: 'Home province', home_district: 'Home district', home_village: 'Home village',
   mobile: 'Mobile number', addr_province: 'Current address – province',
   addr_district: 'Current address – district', addr_town: 'Town or suburb', addr_section_lot: 'Section and lot (or settlement/village)',
+  po_box: 'Postal address (printed on the pledge ticket)',
   // Nearest landmark and residence proof were removed from the form at the lender's request
   // (the columns stay, so values saved earlier are kept).
   // Next of kin was removed from the customer form at the lender's request. The database columns
@@ -29,7 +30,7 @@ const REQUIRED = {
   // on record; add the four fields back here and in views/customers/form.ejs to bring it back.
 };
 // mobile_network is never typed in: it is worked out from the number's prefix.
-const EDITABLE = [...Object.keys(REQUIRED), 'mobile_network', 'second_phone', 'email', 'po_box', 'employer', 'occupation', 'usual_income',
+const EDITABLE = [...Object.keys(REQUIRED), 'mobile_network', 'second_phone', 'email', 'employer', 'occupation', 'usual_income',
   'bank_name', 'sms_language'];
 
 // PNG mobiles for Digicel, Telikom and Vodafone — the rules live in lib/phone.js.

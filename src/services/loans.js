@@ -66,7 +66,8 @@ function snapshotTerms() {
   const s = settings.all();
   return {
     term_months: s.term_months, grace_days: s.grace_days, expiry_days: s.expiry_days, min_loan: s.min_loan, rate_options: s.rate_options,
-    grades: settings.grades(), ticket_terms: s.ticket_terms, pledger_confirmations: s.pledger_confirmations,
+    grades: settings.grades(), pledge_terms: s.pledge_terms, pledge_confirmations: s.pledge_confirmations,
+    pledge_rights: s.pledge_rights, pledge_obligations: s.pledge_obligations, ticket_terms: s.ticket_terms, pledger_confirmations: s.pledger_confirmations,
     rights_obligations: s.rights_obligations, disclosure_extra: s.disclosure_extra, lender_name: s.lender_name,
     lender_slogan: s.lender_slogan, surplus_payment_days: s.surplus_payment_days, taken_at: dates.nowIso(),
   };

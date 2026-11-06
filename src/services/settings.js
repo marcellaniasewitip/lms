@@ -25,6 +25,40 @@ const DEFAULTS = {
   company_bank_account_no: '',
   company_bank_branch: '',
   company_mobile_banking: '',
+  // ---- Company description printed on the pledge ticket (Admin → Settings; one item per line).
+  // {months} is replaced by the loan term. Have a lawyer review this wording before go-live.
+  pledge_terms: [
+    'We will label and hold the Goods for {months} months until the Redemption Date. We will not dispose of the Goods on or before the Redemption Date unless you redeem them before that date.',
+    'You may inspect the Goods (but cannot handle them) and ask us to demonstrate their operation at any reasonable time.',
+    'You must produce this Pledge Ticket and pay the Redemption Price on or before the Redemption Date to redeem the Goods. You cannot pay by cheque or credit card unless agreed with us prior to redeeming the Goods.',
+    'If the Goods comprise more than one item, they cannot be redeemed separately.',
+    'We are entitled to assume, in the absence of proof to the contrary, that the holder of this Pledge Ticket is the owner of the Goods.',
+    "You can obtain a replacement Pledge Ticket if you produce a current passport, current driver's licence which includes a photograph, or other identification documents which positively establish your identity to our satisfaction.",
+    'If you do not redeem your Goods, we will offer them for sale at a public internet auction. If the Goods are not sold via internet auction, we may sell them by any other reasonable means.',
+    'We are not liable for any loss or damage to the Goods due to burglary, fire, theft or any circumstances beyond our reasonable control. You should insure the Goods separately.',
+    'This Pledge Ticket should be read in conjunction with the attached Disclosure Statement and Schedule.',
+  ],
+  pledge_confirmations: [
+    'The details provided above are correct and you are over the age of 18;',
+    'Your identity has been correctly established and the identification details listed above under the heading "ID" are correct;',
+    'You have received the Amount Advanced;',
+    'You are the owner of the Goods and grant us a security interest in the Goods, and there are no prior security interests in, or third party claims to, the Goods. You warrant that you are not registered for GST;',
+  ],
+  pledge_rights: [
+    'At any time to redeem pledged goods on payment of the Redemption Price.',
+    'At any reasonable time to inspect pledged goods (this may consist of the pledger viewing but not handling the goods or the pawnbroker demonstrating their operation).',
+  ],
+  pledge_obligations: [
+    'To keep at their place of business a pawnbrokers record that accurately records the information about the pledger, the goods, redemption of the goods and the financial transaction we are entering into. This Pledge Ticket details that information.',
+    'To verify the identity and age of every pledger of goods (a pledger must be 18 years or older).',
+    "To provide pledgers with a Pledge Ticket (this document) that meets the requirements of the PBA and to issue a replacement Pledge Ticket if we are satisfied of the pledger's identity.",
+    'Not to dispose of pledged goods before the Redemption Date other than by redemption by the pledger or in accordance with the PBA.',
+    'To affix a label in the prescribed form to pledged goods until they are redeemed.',
+    'Except as provided above, not to purchase goods that are subject to a pawnbroking contract with the pawnbroker.',
+    "To record any redemption or purchase of the pledged goods in the pawnbroker's record.",
+    'To pay any excess over the Redemption Price to the pledger within the estimated timeframes required by section 19 of the PBA.',
+  ],
+  // Earlier wording (no longer printed; kept so old settings still load).
   ticket_terms: [
     'Holding period: the goods in Schedule 1 are held by the pawnbroker as security from the contract date until the redemption date shown, plus the grace period stated in the Disclosure Statement.',
     'Inspection: the pledger may look at the goods at the redemption address during business hours, only with a staff member present. Cars stay in the secure yard and must not be driven, used, moved or emptied until the loan is fully paid.',

@@ -13,59 +13,124 @@
   .stamp { position: absolute; top: 38%; left: 8%; right: 8%; text-align: center; font-size: 64px; font-weight: 800; color: rgba(170,0,0,.22); transform: rotate(-14deg); pointer-events: none; letter-spacing: .1em; }
   .stamp-top { background:#fff; text-align:center; font-weight:800; letter-spacing:.1em; position: static; transform: none; font-size: 22px; color: #a00; border: 3px solid #a00; margin-bottom: 6px; }
   .note { font-style: italic; }
-  @media print { .noprint { display: none; } .sheet { border: 1px solid #000; } }
+  /* Pledge ticket laid out like the printed document */
+  .pt { font-family: Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.22; border: 0; padding: 4px 8px; }
+  .pt .copyline { text-align: right; font-size: 10px; margin-bottom: 4px; }
+  .pt .brand { text-align: center; margin-top: 4px; }
+  .pt .brand { white-space: nowrap; }
+  .pt .bname { font-size: 26px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .pt .bar { font-size: 26px; margin: 0 8px; }
+  .pt .slogan { font-size: 21px; font-style: italic; }
+  .pt .ptitle { text-align: center; font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .pt .psub { text-align: center; font-size: 12px; margin-bottom: 6px; }
+  .pt .block { display: grid; grid-template-columns: 100px 1fr; gap: 2px 10px; margin: 5px 0; }
+  .pt .bl { font-size: 13px; }
+  .pt .kv2 { display: grid; grid-template-columns: 130px 1fr; gap: 0 14px; font-size: 11px; }
+  .pt .rule { border-top: 3px solid #000; margin: 8px 0; }
+  .pt .rule.thin { border-top-width: 1px; }
+  .pt .money { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; font-size: 12px; }
+  .pt .money.small2 { font-size: 11px; align-items: end; margin-top: 6px; }
+  .pt .kv3 { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; }
+  .pt .r { text-align: right; }
+  .pt ol.pterms { margin: 6px 0 4px 20px; padding: 0; } .pt ol.pterms li { margin-bottom: 1px; }
+  .pt .pconf { margin: 4px 0 0 20px; }
+  .pt .psum { margin-top: 4px; }
+  .pt ul.pdash { list-style: none; margin: 2px 0 2px 36px; padding: 0; } .pt ul.pdash li::before { content: '– '; margin-left: -14px; }
+  .pt .sigs { display: flex; justify-content: space-between; gap: 60px; margin-top: 26px; font-size: 11.5px; }
+  .pt .sigs > div { flex: 1; } .pt .sigs .line { border-top: 1px solid #000; margin-bottom: 4px; }
+  .pt .sched { margin-top: 6px; font-size: 11.5px; position: relative; }
+  .pt .sched ul { margin: 2px 0 6px 18px; padding: 0; }
+  .pt .sched .barcode { position: absolute; right: 0; top: 0; } .pt .sched .barcode img { height: 46px; }
+  .pt .expired-mark { position: absolute; right: 24px; top: 6px; font-size: 26px; font-weight: 800; color: #a00; border: 3px solid #a00; padding: 0 8px; transform: rotate(-8deg); }
+  @page { size: A4; margin: 10mm; }
+  @media print { .noprint { display: none; } .sheet { border: 1px solid #000; } .sheet.pt { border: 0; margin: 0; max-width: none; } }
 </style></head><body>
 <div class="noprint" style="max-width:800px;margin:1rem auto"><button class="btn" data-print>Print both copies</button> <a href="/loans/<%= l.id %>">Back to loan</a>
 <% if (preview) { %><span class="alert alert-warn" style="display:inline-block;margin:0 0 0 1rem;padding:.3rem .6rem">Preview — figures assume release today; the ticket is final once money is released.</span><% } %></div>
-<% const t0 = fig.terms; const expired = t && t.status === 'expired'; const replacement = t && t.kind === 'replacement';
+<% const t0 = fig.terms; const cur = current; const expired = t && t.status === 'expired'; const replacement = t && t.kind === 'replacement';
+   const pick = function (k) { return (t0[k] && t0[k].length ? t0[k] : cur[k]) || []; };
+   const months = t0.term_months || cur.term_months;
+   const terms = pick('pledge_terms').map(function (x) { return x.replace(/\{months\}/g, months); });
+   const CAT = { phone: 'ELECTRONIC PHONE', laptop: 'ELECTRONIC LAPTOP', car: 'MOTOR VEHICLE' };
+   const addr = [c.addr_section_lot, c.addr_town, c.addr_district, c.addr_province].filter(Boolean).join(', ');
    ['PLEDGER\'S COPY', 'LENDER\'S COPY — signed and scanned into the loan'].forEach(function (copy) { %>
-<div class="sheet">
-  <% if (expired) { %><div class="stamp-top">EXPIRED</div><% } %>
+<div class="sheet pt">
+  <% if (expired) { %><div class="expired-mark">EXPIRED</div><% } %>
   <% if (replacement) { %><div class="stamp">REPLACEMENT</div><% } %>
-  <div class="hdr">
-    <div><h1><%= t0.lender_name %></h1><div class="note"><%= t0.lender_slogan %></div>
-      <div><strong>Pledge ticket for goods details in Schedule 1</strong></div><div>Required by the Pawnbrokers Act 1951</div></div>
-    <div style="text-align:right"><span class="copy"><%= copy %></span><br><img src="/loans/<%= l.id %>/barcode.png" alt="<%= l.loan_no %>" style="height:52px;margin-top:6px"><br>
-    <% if (t) { %>Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
+  <div class="copyline noprint-hide"><span class="copy"><%= copy %></span><% if (t) { %> Ticket <%= t.ticket_no %> v<%= t.version %><%= replacement ? ' (Replacement)' : '' %><% } %></div>
+  <div class="brand"><span class="bname"><%= t0.lender_name %></span><% if (t0.lender_slogan) { %><span class="bar">|</span><span class="slogan"><%= t0.lender_slogan %></span><% } %></div>
+  <div class="ptitle">PLEDGE TICKET FOR GOODS DETAILS IN SCHEDULE 1 – ATTACHED ("the Goods")</div>
+  <div class="psub">Required by the Pawnbrokers Act 1951 ("PBA")</div>
+
+  <div class="block">
+    <div class="bl">Our details</div>
+    <div class="kv2">
+      <span>Name:</span><span><%= t0.lender_name %> — <%= branch.name %> ("we", "us", "our")</span>
+      <span>Phone:</span><span><%= branch.phone %></span>
+      <span>Email:</span><span><%= branch.email %></span>
+      <span>Postal Address:</span><span><%= branch.postal_address %><br><em>This is where you can redeem your goods.</em></span>
+      <span>Physical Address:</span><span><%= branch.physical_address %></span>
+    </div>
   </div>
 
-  <h2>Our details</h2>
-  <table class="t"><tr><th>Lender</th><td><%= t0.lender_name %> — <%= branch.name %></td></tr>
-  <tr><th>Phone / email</th><td><%= branch.phone %> · <%= branch.email %></td></tr>
-  <tr><th>Postal address</th><td><%= branch.postal_address %></td></tr>
-  <tr><th>Address where goods are redeemed</th><td><%= branch.physical_address %></td></tr></table>
+  <div class="block">
+    <div class="bl">Your details</div>
+    <div class="kv2">
+      <span>Postal Address:</span><span><%= c.po_box || '—' %></span>
+      <span>Name:</span><span><%= c.given_names %> <%= c.surname %></span>
+      <span>Residential:</span><span><%= addr %></span>
+      <span>Phone:</span><span><%= fmtPhone(c.mobile) %></span>
+      <span>ID:</span><span><%= idText %></span>
+      <span>Date of Birth:</span><span><%= fd(c.dob) %> <em>(Note you must be 18 years or over to pledge goods)</em></span>
+    </div>
+  </div>
+  <div class="rule"></div>
 
-  <h2>Your details</h2>
-  <table class="t"><tr><th>Pledger</th><td><%= c.given_names %> <%= c.surname %> (<%= c.customer_no %>)</td></tr>
-  <tr><th>Postal address</th><td><%= c.po_box || '—' %></td></tr>
-  <tr><th>Residential address</th><td><%= c.addr_section_lot %>, <%= c.addr_town %>, <%= c.addr_district %>, <%= c.addr_province %></td></tr>
-  <tr><th>Phone</th><td><%= fmtPhone(c.mobile) %> (<%= c.mobile_network %>)</td></tr>
-  <tr><th>ID</th><td><%= idText %></td></tr>
-  <tr><th>Date of birth</th><td><%= fd(c.dob) %> (18 or over: <%= dates.ageOn(c.dob, fig.release) >= 18 ? 'yes' : 'NO' %>)</td></tr></table>
+  <div class="money">
+    <div class="kv3">
+      <span>Amount Advanced</span><span class="r"><%= K(fig.amount) %></span>
+      <span>Redemption Fee</span><span class="r"><%= K(fig.weeklyCharge) %></span>
+      <span>Amount Payable at Redemption<br>(Redemption Price)</span><span class="r"><strong><%= K(fig.price) %></strong></span>
+    </div>
+    <div class="kv3">
+      <span>Contract Number</span><span class="r"><strong><%= l.loan_no %></strong></span>
+      <span>Contract Date</span><span class="r"><%= fd(fig.release) %></span>
+      <span>Redemption Date</span><span class="r"><strong><%= fd(fig.redemptionDate) %></strong></span>
+    </div>
+  </div>
+  <div class="money small2">
+    <div>A lesser amount may be payable if you redeem the Goods before the Redemption Date. <%= fd(fig.redemptionDate) %></div>
+    <div class="kv3"><span>Redemption Period</span><span class="r"><%= months %> months</span></div>
+  </div>
+  <div class="rule thin"></div>
 
-  <h2>Contract</h2>
-  <table class="t"><tr><th>Contract number</th><td><strong><%= l.loan_no %></strong></td></tr>
-  <tr><th>Contract date</th><td><%= fd(fig.release) %></td></tr>
-  <tr><th>Amount advanced</th><td><%= K(fig.amount) %></td></tr>
-  <tr><th>Redemption fee</th><td><%= K(fig.weeklyCharge) %> (<%= l.weekly_rate %>% of the principal owed) charged on the contract date and every 7 days to the redemption date: <%= fig.charges %> charges = <%= K(fig.totalCharges) %><%= fig.fees ? '; plus fees ' + K(fig.fees) : '' %></td></tr>
-  <tr><th>Amount payable at redemption (redemption price)</th><td><strong><%= K(fig.price) %></strong></td></tr>
-  <tr><th>Redemption date</th><td><strong><%= fd(fig.redemptionDate) %></strong></td></tr>
-  <tr><th>Redemption period</th><td><%= t0.term_months %> months from the contract date (grace period <%= t0.grace_days %> days, to <%= fd(fig.graceEnd) %>)</td></tr></table>
-  <p class="note">A lesser amount may be payable if you redeem the goods before the redemption date (<%= fd(fig.redemptionDate) %>).</p>
+  <ol class="pterms"><% terms.forEach(function (x) { %><li><%= x %></li><% }) %></ol>
+  <div class="pconf">By signing below, you agree and confirm:</div>
+  <ol class="pterms"><% pick('pledge_confirmations').forEach(function (x) { %><li><%= x %></li><% }) %></ol>
+  <div class="psum"><em>Summary of Rights of Pledgers and Obligations of Pawnbrokers under the pledge, as provided by the PBA</em></div>
+  <div class="pconf">Rights of Pledgers</div>
+  <ul class="pdash"><% pick('pledge_rights').forEach(function (x) { %><li><%= x %></li><% }) %></ul>
+  <div class="pconf">Obligations of Pawnbrokers</div>
+  <ul class="pdash"><% pick('pledge_obligations').forEach(function (x) { %><li><%= x %></li><% }) %></ul>
 
-  <h2>Terms</h2>
-  <ol class="terms"><% t0.ticket_terms.forEach(function (x) { %><li><%= x %></li><% }) %></ol>
+  <div class="sigs">
+    <div><div class="line"></div>Signed by: <%= c.given_names %> <%= c.surname %></div>
+    <div><div class="line"></div>Signed by: <%= officer %></div>
+  </div>
 
-  <h2>Pledger confirmations</h2><p><%= t0.pledger_confirmations %></p>
-  <h2>Rights and obligations</h2><p><%= t0.rights_obligations %></p>
-
-  <h2>Schedule 1 – The goods</h2>
-  <table class="t" style="font-size:11px"><tr style="background:#f2f2f2"><td><strong>Item no.</strong></td><td><strong>Category</strong></td><td><strong>Brand / model</strong></td><td><strong>Specs</strong></td><td><strong>Serial / IMEI / VIN</strong></td><td><strong>Accessories</strong></td><td><strong>Device password</strong></td><% if (copy.startsWith('LENDER')) { %><td><strong>Bin #</strong></td><% } %></tr>
-  <% lis.forEach(function (i) { %><tr><td><%= i.schedule_no %><br><span class="small"><%= i.item_no %></span></td><td><%= i.category %></td><td><%= i.brand_name %> <%= i.model %> <%= i.year || '' %> <%= i.colour || '' %></td>
-  <td><%= i.category === 'car' ? 'Odometer ' + Number(i.mileage_intake).toLocaleString() + ' km, fuel ' + i.fuel_intake : (i.storage || '') + ' / ' + (i.ram || '') + ' ' + (i.processor || '') %></td>
-  <td><%= i.category === 'car' ? 'VIN ' + i.vin + ', engine ' + i.engine_no + ', plate ' + i.plate : (i.imei ? 'IMEI ' + i.imei : 'S/N ' + i.serial_no) %></td><td><%= JSON.parse(i.accessories || '[]').join(', ') %></td><td><%= i.category === 'car' ? '—' : i.password %></td><% if (copy.startsWith('LENDER')) { %><td><strong><%= i.location %></strong><%= i.safe_location ? '; ' + i.safe_location : '' %></td><% } %></tr><% }) %></table>
-
-  <div class="sig"><div>Pledger: <%= c.given_names %> <%= c.surname %></div><div>For the lender: <%= officer %> (Loan Officer)</div><div>Date: <%= fd(fig.release) %></div></div>
+  <div class="sched">
+    <div><em>Schedule 1 – The Goods</em></div>
+    <% lis.forEach(function (i) { const acc = JSON.parse(i.accessories || '[]'); %>
+    <div class="itemno">Item number <%= i.schedule_no %></div>
+    <ul>
+      <li><%= CAT[i.category] %>, <%= i.brand_name %> <%= i.model %><%= i.category === 'car' ? (i.year ? ', ' + i.year : '') + (i.colour ? ', ' + i.colour : '') + ', odometer ' + Number(i.mileage_intake).toLocaleString() + ' km' : (i.storage ? ', ' + i.storage : '') + (i.ram ? ', ' + i.ram + ' RAM' : '') + (i.processor ? ', ' + i.processor : '') %></li>
+      <li><%= i.category === 'car' ? 'VIN: ' + i.vin + ', Engine: ' + i.engine_no + ', Plate: ' + i.plate : i.imei ? 'IMEI: ' + i.imei : 'SN: ' + i.serial_no %></li>
+      <li><%= acc.length ? 'Comes with ' + acc.join(', ') : 'No accessories' %><%= i.category === 'car' ? '' : ' and pw: ' + i.password %></li>
+      <% if (copy.startsWith('LENDER')) { %><li><strong><%= i.location %></strong><%= i.safe_location ? '; ' + i.safe_location : '' %> · tag <%= i.item_no %></li><% } %>
+    </ul>
+    <% }) %>
+    <div class="barcode"><img src="/loans/<%= l.id %>/barcode.png" alt="<%= l.loan_no %>"></div>
+  </div>
 </div>
 
 <div class="sheet">

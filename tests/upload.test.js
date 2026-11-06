@@ -50,7 +50,7 @@ async function register({ photo, photo2 }) {
   const fields = {
     surname: `Kapi${'ABCDEFGH'[n]}`, given_names: 'Rose', dob: `0${n}/03/1991`, sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean',
     home_province: 'Eastern Highlands', home_district: 'Goroka', home_village: 'Asaro', mobile: `(+675) 7345-678${n}`,
-    addr_province: 'National Capital District', addr_district: 'Moresby North-East', addr_town: 'Gerehu', addr_section_lot: 'Section 3, Lot 4',
+    addr_province: 'National Capital District', addr_district: 'Moresby North-East', addr_town: 'Gerehu', addr_section_lot: 'Section 3, Lot 4', po_box: 'P.O.Box 685, Waigani, NCD',
     // no landmark, residence proof, SMS language, signature, bank details or next of kin: no longer asked for
     consent_terms: '1', consent_data: '1', consent_forfeit: '1',
   };

@@ -36,7 +36,7 @@
     <div><label>District <span class="req">*</span></label><input name="addr_district" value="<%= v('addr_district') %>" required></div>
     <div><label>Town or suburb <span class="req">*</span></label><input name="addr_town" value="<%= v('addr_town') %>" required></div>
     <div><label>Section and lot (or settlement / village) <span class="req">*</span></label><input name="addr_section_lot" value="<%= v('addr_section_lot') %>" required></div>
-    <div><label>PO Box</label><input name="po_box" value="<%= v('po_box') %>"></div>
+    <div><label>Postal address <span class="req">*</span></label><input name="po_box" value="<%= v('po_box') %>" placeholder="e.g. P.O.Box 685, Waigani, NCD" required><div class="hint">Printed on the pledge ticket. Write "None" if the customer has no postal address.</div></div>
   </div>
 </fieldset>
 <fieldset><legend>Work or income (optional)</legend>

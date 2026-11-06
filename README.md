@@ -62,7 +62,7 @@ The server reads its page templates once, at start-up, so it keeps running the v
 | Custody, every movement, car yard viewings, device password (encrypted, CRO-only, deleted on return or sale) | `items.js`, `views/items/view.ejs` |
 | Loan product, own copy of terms, key dates | `loans.release` (`terms_snapshot`), `src/lib/engine.js` |
 | Weekly interest, fees → interest → principal, worked example | `src/lib/engine.js` (pure replay); `tests/engine.test.js` reproduces K1,000 → K1,260 and the K140 → K476 ticket sample |
-| Pledge ticket (PBA 1951), Disclosure Statement, two copies, barcode, replacement and EXPIRED reprints | `views/print/ticket.ejs`, `loans.replaceTicket` |
+| Pledge ticket (PBA 1951) laid out like the lender's printed ticket — company name and slogan, Our details, Your details, amounts and dates, the company description (terms, "By signing below" confirmations, rights of pledgers and obligations of pawnbrokers — editable in Admin → Settings), "Signed by" lines for the customer and the Loan Officer, and Schedule 1 – The Goods; one A4 page per copy, plus the Disclosure Statement; two copies, barcode, replacement and EXPIRED reprints | `views/print/ticket.ejs`, `loans.replaceTicket` |
 | Payments, channels, holding list for transfers, overpayment refunds, reversals as new entries, waivers | `loans.postPayment`, `src/services/payments.js` |
 | Maturity → grace → forfeiture → auction → surplus/shortfall (s.19) | `src/services/jobs.js`, `loans.declareForfeit / approveReserve / recordListing / recordSale / payRefund` |
 | Expiry conditions, nightly pull-out, 7-day advance list, early pull-out, restore, 7-year retention, deletion log | `src/services/archive.js` |

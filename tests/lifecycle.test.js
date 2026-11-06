@@ -55,7 +55,7 @@ test('expired ID is rejected and under-18 blocked', () => {
   const { id } = customers.create(C(lo, t), {
     surname: 'Young', given_names: 'Ana', dob: '01/01/2000', sex: 'Female', marital_status: 'Single', citizenship: 'Papua New Guinean', home_province: 'Central',
     home_district: 'Abau', home_village: 'Kupiano', mobile: '(+675) 8199-8888', addr_province: 'Central', addr_district: 'Abau', addr_town: 'Kupiano',
-    addr_section_lot: 'Village', addr_landmark: 'Church', residence_proof_type: 'Letter from the ward councillor', nok_name: 'X', nok_relationship: 'Mother', nok_phone: '(+675) 71111111',
+    addr_section_lot: 'Village', po_box: 'None', addr_landmark: 'Church', residence_proof_type: 'Letter from the ward councillor', nok_name: 'X', nok_relationship: 'Mother', nok_phone: '(+675) 71111111',
     nok_address: 'Kupiano', consent_terms: 1, consent_data: 1, consent_forfeit: 1,
   }, { photoDataUrl: fx.DATA_URL, signatureDataUrl: fx.DATA_URL });
   const nid = customers.idTypes()[0];

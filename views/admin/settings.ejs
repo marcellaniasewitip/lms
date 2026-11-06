@@ -32,10 +32,12 @@
   <div><label>Monthly lending target (K)</label><input name="monthly_lending_target" value="<%= k(s.monthly_lending_target) %>"></div>
   <div><label>Monthly collection target (K)</label><input name="monthly_collection_target" value="<%= k(s.monthly_collection_target) %>"></div>
 </div></fieldset>
-<fieldset><legend>Pledge ticket text (English) — have a lawyer review before go-live</legend>
-  <% s.ticket_terms.forEach(function (t, i) { %><label>Term <%= i + 1 %></label><textarea name="ticket_terms"><%= t %></textarea><% }) %>
-  <label>Pledger confirmations</label><textarea name="pledger_confirmations"><%= s.pledger_confirmations %></textarea>
-  <label>Rights and obligations</label><textarea name="rights_obligations"><%= s.rights_obligations %></textarea>
+<fieldset><legend>Pledge ticket — company description (have a lawyer review this wording before go-live)</legend>
+  <p class="hint">One item per line; each line is printed as one numbered or bulleted point. <span class="mono">{months}</span> is replaced by the loan term. New loans take a copy of this wording when they are approved; loans already approved keep theirs.</p>
+  <label>Terms (numbered 1, 2, 3 …)</label><textarea name="pledge_terms" rows="11"><%= s.pledge_terms.join('\n') %></textarea>
+  <label>"By signing below, you agree and confirm:" (numbered)</label><textarea name="pledge_confirmations" rows="5"><%= s.pledge_confirmations.join('\n') %></textarea>
+  <label>Rights of Pledgers</label><textarea name="pledge_rights" rows="3"><%= s.pledge_rights.join('\n') %></textarea>
+  <label>Obligations of Pawnbrokers</label><textarea name="pledge_obligations" rows="9"><%= s.pledge_obligations.join('\n') %></textarea>
   <label>Disclosure Statement — extra text</label><textarea name="disclosure_extra"><%= s.disclosure_extra %></textarea>
 </fieldset>
 <div class="actions"><button class="btn">Save settings</button></div>
